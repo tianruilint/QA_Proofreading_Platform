@@ -1,0 +1,137 @@
+graph TB
+    subgraph "用户层"
+        U1[管理员用户]
+        U2[普通用户]
+        U3[访客用户]
+    end
+
+    subgraph "前端层 (React + Ant Design)"
+        FE[前端应用]
+        subgraph "前端模块"
+            LOGIN[登录模块]
+            UPLOAD[文件上传模块]
+            EDIT[QA对编辑模块]
+            COLLAB[协作任务模块]
+            TASKLIST[任务列表模块]
+        end
+    end
+
+    subgraph "网络层"
+        NGINX[Nginx 反向代理]
+        HTTPS[HTTPS/SSL]
+    end
+
+    subgraph "后端层 (FastAPI)"
+        API[FastAPI 应用]
+        subgraph "后端模块"
+            AUTH[用户认证模块]
+            FILE[文件处理模块]
+            QA[QA对管理模块]
+            TASK[任务管理模块]
+            EXPORT[导出模块]
+        end
+    end
+
+    subgraph "数据层"
+        subgraph "数据库 (PostgreSQL)"
+            DB[(PostgreSQL)]
+            T1[users 表]
+            T2[tasks 表]
+            T3[task_assignments 表]
+            T4[single_file_sessions 表]
+            T5[qa_pairs 表]
+        end
+        
+        subgraph "缓存层 (Redis)"
+            REDIS[(Redis)]
+            CACHE1[用户会话缓存]
+            CACHE2[任务进度缓存]
+            CACHE3[临时数据缓存]
+        end
+        
+        subgraph "文件存储"
+            FS[本地文件系统]
+            UPLOAD_DIR[上传文件目录]
+            EXPORT_DIR[导出文件目录]
+            TEMP_DIR[临时文件目录]
+        end
+    end
+
+    subgraph "外部服务"
+        CRON[定时清理任务]
+        BACKUP[数据备份服务]
+    end
+
+    %% 用户交互流
+    U1 --> FE
+    U2 --> FE
+    U3 --> FE
+
+    %% 前端模块交互
+    FE --> LOGIN
+    FE --> UPLOAD
+    FE --> EDIT
+    FE --> COLLAB
+    FE --> TASKLIST
+
+    %% 网络层
+    FE --> NGINX
+    NGINX --> HTTPS
+    HTTPS --> API
+
+    %% 后端模块交互
+    API --> AUTH
+    API --> FILE
+    API --> QA
+    API --> TASK
+    API --> EXPORT
+
+    %% 数据访问
+    AUTH --> DB
+    AUTH --> REDIS
+    FILE --> DB
+    FILE --> FS
+    QA --> DB
+    QA --> REDIS
+    TASK --> DB
+    TASK --> REDIS
+    EXPORT --> DB
+    EXPORT --> FS
+
+    %% 数据库表关系
+    DB --> T1
+    DB --> T2
+    DB --> T3
+    DB --> T4
+    DB --> T5
+
+    %% 缓存分类
+    REDIS --> CACHE1
+    REDIS --> CACHE2
+    REDIS --> CACHE3
+
+    %% 文件存储分类
+    FS --> UPLOAD_DIR
+    FS --> EXPORT_DIR
+    FS --> TEMP_DIR
+
+    %% 外部服务
+    CRON --> DB
+    CRON --> FS
+    BACKUP --> DB
+
+    %% 样式定义
+    classDef userClass fill:#e1f5fe
+    classDef frontendClass fill:#f3e5f5
+    classDef networkClass fill:#fff3e0
+    classDef backendClass fill:#e8f5e8
+    classDef dataClass fill:#fce4ec
+    classDef externalClass fill:#f1f8e9
+
+    class U1,U2,U3 userClass
+    class FE,LOGIN,UPLOAD,EDIT,COLLAB,TASKLIST frontendClass
+    class NGINX,HTTPS networkClass
+    class API,AUTH,FILE,QA,TASK,EXPORT backendClass
+    class DB,T1,T2,T3,T4,T5,REDIS,CACHE1,CACHE2,CACHE3,FS,UPLOAD_DIR,EXPORT_DIR,TEMP_DIR dataClass
+    class CRON,BACKUP externalClass
+

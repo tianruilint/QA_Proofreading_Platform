@@ -1,0 +1,71 @@
+sudo ufw reloadsudo ufw status^C(venv) root@itc-qashpt:/home/ubuntu/qa-proofreading-platform# sudo ufw status
+Status: inactive
+(venv) root@itc-qashpt:/home/ubuntu/qa-proofreading-platform# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: ens160: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 00:50:56:bf:d3:0e brd ff:ff:ff:ff:ff:ff
+    inet 192.168.23.174/24 brd 192.168.23.255 scope global ens160
+       valid_lft forever preferred_lft forever
+    inet6 fe80::250:56ff:febf:d30e/64 scope link 
+       valid_lft forever preferred_lft forever
+(venv) root@itc-qashpt:/home/ubuntu/qa-proofreading-platform# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: ens160: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 00:50:56:bf:d3:0e brd ff:ff:ff:ff:ff:ff
+    inet 192.168.23.174/24 brd 192.168.23.255 scope global ens160
+       valid_lft forever preferred_lft forever
+    inet6 fe80::250:56ff:febf:d30e/64 scope link 
+       valid_lft forever preferred_lft forever
+(venv) root@itc-qashpt:/home/ubuntu/qa-proofreading-platform# ^C
+(venv) root@itc-qashpt:/home/ubuntu/qa-proofreading-platform# nohup python src/main.py > flask.log 2>&1 &
+[1] 41159
+(venv) root@itc-qashpt:/home/ubuntu/qa-proofreading-platform# sleep 3
+curl http://localhost:5000/api/v1/users
+(venv) root@itc-qashpt:/home/ubuntu/qa-proofreading-platform# curl http://localhost:5000/api/v1/users
+{
+  "data": {
+    "users": [
+      {
+        "created_at": "2025-07-09T06:49:38.220664",
+        "id": "ef75bab7-3bf9-415e-baaf-c63d0e826b37",
+        "is_admin": true,
+        "name": "\u5f20\u4e09"
+      },
+      {
+        "created_at": "2025-07-09T06:49:38.232826",
+        "id": "6531e723-9ff5-4fac-825c-1dfc5833c4b1",
+        "is_admin": false,
+        "name": "\u674e\u56db"
+      },
+      {
+        "created_at": "2025-07-09T06:49:38.232892",
+        "id": "1fd666a9-9913-41eb-92e4-1a559b9703c3",
+        "is_admin": false,
+        "name": "\u738b\u4e94"
+      },
+      {
+        "created_at": "2025-07-09T06:49:38.232937",
+        "id": "0945dcab-eece-4003-8771-e944afbe217c",
+        "is_admin": false,
+        "name": "\u8d75\u516d"
+      },
+      {
+        "created_at": "2025-07-09T06:49:38.232976",
+        "id": "176c78d6-66ad-446f-9a78-9865b226aa0c",
+        "is_admin": false,
+        "name": "\u94b1\u4e03"
+      }
+    ]
+  },
+  "success": true
+}

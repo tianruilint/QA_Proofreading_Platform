@@ -1,0 +1,106 @@
+graph TD
+    subgraph "单文件校对数据流"
+        SF1[用户上传JSONL文件]
+        SF2[文件格式验证]
+        SF3[解析JSONL创建会话]
+        SF4[存储QA对到数据库]
+        SF5[前端分页展示]
+        SF6[用户编辑QA对]
+        SF7[实时保存到数据库]
+        SF8[导出JSONL/Excel]
+        SF9[清理临时数据]
+        
+        SF1 --> SF2
+        SF2 --> SF3
+        SF3 --> SF4
+        SF4 --> SF5
+        SF5 --> SF6
+        SF6 --> SF7
+        SF7 --> SF8
+        SF8 --> SF9
+    end
+
+    subgraph "协作任务数据流"
+        CT1[创建者上传文件]
+        CT2[创建协作任务]
+        CT3[分配QA对给用户]
+        CT4[用户接收任务通知]
+        CT5[用户编辑分配的QA对]
+        CT6[用户提交完成部分]
+        CT7[更新任务进度]
+        CT8[所有用户完成]
+        CT9[创建者合并导出]
+        CT10[清理任务数据]
+        
+        CT1 --> CT2
+        CT2 --> CT3
+        CT3 --> CT4
+        CT4 --> CT5
+        CT5 --> CT6
+        CT6 --> CT7
+        CT7 --> CT8
+        CT8 --> CT9
+        CT9 --> CT10
+    end
+
+    subgraph "数据存储层"
+        DB1[(用户表)]
+        DB2[(任务表)]
+        DB3[(任务分配表)]
+        DB4[(单文件会话表)]
+        DB5[(QA对表)]
+        FS1[原始文件存储]
+        FS2[导出文件存储]
+        CACHE1[会话缓存]
+        CACHE2[进度缓存]
+    end
+
+    subgraph "文件处理流程"
+        FP1[文件上传]
+        FP2[格式验证]
+        FP3[JSONL解析]
+        FP4[数据入库]
+        FP5[Excel转换]
+        FP6[文件下载]
+        
+        FP1 --> FP2
+        FP2 --> FP3
+        FP3 --> FP4
+        FP4 --> FP5
+        FP5 --> FP6
+    end
+
+    %% 单文件校对数据流连接
+    SF3 --> DB4
+    SF4 --> DB5
+    SF7 --> DB5
+    SF8 --> FS2
+
+    %% 协作任务数据流连接
+    CT2 --> DB2
+    CT3 --> DB3
+    CT5 --> DB5
+    CT6 --> DB3
+    CT7 --> CACHE2
+    CT9 --> FS2
+
+    %% 文件处理连接
+    FP1 --> FS1
+    FP4 --> DB5
+    FP6 --> FS2
+
+    %% 缓存连接
+    SF5 --> CACHE1
+    CT4 --> CACHE1
+
+    %% 样式定义
+    classDef singleFileClass fill:#e3f2fd
+    classDef collabClass fill:#f1f8e9
+    classDef dataClass fill:#fce4ec
+    classDef fileClass fill:#fff3e0
+
+    class SF1,SF2,SF3,SF4,SF5,SF6,SF7,SF8,SF9 singleFileClass
+    class CT1,CT2,CT3,CT4,CT5,CT6,CT7,CT8,CT9,CT10 collabClass
+    class DB1,DB2,DB3,DB4,DB5,FS1,FS2,CACHE1,CACHE2 dataClass
+    class FP1,FP2,FP3,FP4,FP5,FP6 fileClass
+
