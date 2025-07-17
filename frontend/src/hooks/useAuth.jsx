@@ -57,6 +57,8 @@ export function AuthProvider({ children }) {
     } finally {
       setUser(null);
       setIsAuthenticated(false);
+      // 清除页面状态，重定向到首页
+      window.location.href = '/';
     }
   };
 

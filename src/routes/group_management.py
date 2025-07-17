@@ -12,6 +12,30 @@ group_management_bp = Blueprint('group_management', __name__)
 def get_admin_groups(current_user):
     """获取管理员组列表"""
     try:
+        # 检查是否是简单列表请求（用于下拉选择）
+        simple = request.args.get('simple', 'false').lower() == 'true'
+        
+        if simple:
+            # 简单列表格式，用于下拉选择
+            query = AdminGroup.query.filter_by(is_active=True)
+            
+            # 权限过滤
+            if not current_user.is_super_admin():
+                # 非超级管理员只能查看自己的组
+                if current_user.is_admin():
+                    query = query.filter_by(id=current_user.admin_group_id)
+                else:
+                    query = query.filter(AdminGroup.id == -1)  # 返回空结果
+            
+            admin_groups = query.all()
+            return jsonify(create_response(
+                success=True,
+                data={
+                    'admin_groups': [group.to_dict() for group in admin_groups]
+                }
+            ))
+        
+        # 分页列表格式
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         
@@ -175,6 +199,33 @@ def delete_admin_group(current_user, group_id):
 def get_user_groups(current_user):
     """获取用户组列表"""
     try:
+        # 检查是否是简单列表请求（用于下拉选择）
+        simple = request.args.get('simple', 'false').lower() == 'true'
+        
+        if simple:
+            # 简单列表格式，用于下拉选择
+            query = UserGroup.query.filter_by(is_active=True)
+            
+            # 权限过滤
+            if not current_user.is_super_admin():
+                if current_user.is_admin():
+                    # 管理员只能查看自己可管理的用户组
+                    manageable_groups = current_user.get_manageable_user_groups()
+                    group_ids = [group.id for group in manageable_groups]
+                    query = query.filter(UserGroup.id.in_(group_ids))
+                else:
+                    # 普通用户只能查看自己的组
+                    query = query.filter_by(id=current_user.user_group_id)
+            
+            user_groups = query.all()
+            return jsonify(create_response(
+                success=True,
+                data={
+                    'user_groups': [group.to_dict() for group in user_groups]
+                }
+            ))
+        
+        # 分页列表格式
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         
@@ -339,7 +390,7 @@ def delete_user_group(current_user, group_id):
 @group_management_bp.route('/admin-groups/<int:admin_group_id>/user-groups', methods=['POST'])
 @super_admin_required
 def link_user_groups(current_user, admin_group_id):
-    """关联用户组到管理员组"""
+    """更新管理员组的用户组关联关系"""
     try:
         admin_group = AdminGroup.get_or_404(admin_group_id)
         
@@ -351,39 +402,42 @@ def link_user_groups(current_user, admin_group_id):
             )), 400
         
         user_group_ids = data.get('user_group_ids', [])
-        if not user_group_ids:
-            return jsonify(create_response(
-                success=False,
-                error={'code': 'MISSING_FIELDS', 'message': '用户组ID列表不能为空'}
-            )), 400
         
         # 验证用户组是否存在
-        user_groups = UserGroup.query.filter(
-            UserGroup.id.in_(user_group_ids),
-            UserGroup.is_active == True
-        ).all()
+        if user_group_ids:
+            user_groups = UserGroup.query.filter(
+                UserGroup.id.in_(user_group_ids),
+                UserGroup.is_active == True
+            ).all()
+            
+            if len(user_groups) != len(user_group_ids):
+                return jsonify(create_response(
+                    success=False,
+                    error={'code': 'INVALID_GROUP', 'message': '部分用户组不存在或已被删除'}
+                )), 400
+        else:
+            user_groups = []
         
-        if len(user_groups) != len(user_group_ids):
-            return jsonify(create_response(
-                success=False,
-                error={'code': 'INVALID_GROUP', 'message': '部分用户组不存在或已被删除'}
-            )), 400
+        # 清除现有关联
+        admin_group.user_groups.clear()
         
-        # 添加关联
+        # 添加新的关联
         for user_group in user_groups:
-            admin_group.add_user_group(user_group)
+            admin_group.user_groups.append(user_group)
+        
+        db.session.commit()
         
         return jsonify(create_response(
             success=True,
             data=admin_group.to_dict(include_associations=True),
-            message='用户组关联成功'
+            message='用户组关联更新成功'
         ))
     
     except Exception as e:
         db.session.rollback()
         return jsonify(create_response(
             success=False,
-            error={'code': 'INTERNAL_ERROR', 'message': f'关联用户组失败: {str(e)}'}
+            error={'code': 'INTERNAL_ERROR', 'message': f'更新用户组关联失败: {str(e)}'}
         )), 500
 
 @group_management_bp.route('/admin-groups/<int:admin_group_id>/user-groups/<int:user_group_id>', methods=['DELETE'])

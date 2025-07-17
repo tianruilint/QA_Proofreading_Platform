@@ -22,7 +22,7 @@ def get_user_groups(current_user):
 @login_required
 def create_user_group(current_user):
     """创建用户组"""
-    if not current_user.is_admin:
+    if not current_user.is_admin()()():
         return jsonify({
             'success': False,
             'error': {
@@ -72,7 +72,7 @@ def create_user_group(current_user):
 @login_required
 def get_admin_groups(current_user):
     """获取管理员组列表"""
-    if not current_user.is_admin:
+    if not current_user.is_admin()()():
         return jsonify({
             'success': False,
             'error': {
@@ -93,7 +93,7 @@ def get_admin_groups(current_user):
 @login_required
 def create_admin_group(current_user):
     """创建管理员组"""
-    if not current_user.is_admin:
+    if not current_user.is_admin()():
         return jsonify({
             'success': False,
             'error': {
@@ -143,7 +143,7 @@ def create_admin_group(current_user):
 @login_required
 def bind_user_group(current_user, admin_group_id):
     """绑定管理员组和用户组"""
-    if not current_user.is_admin:
+    if not current_user.is_admin()():
         return jsonify({
             'success': False,
             'error': {
@@ -221,7 +221,7 @@ def bind_user_group(current_user, admin_group_id):
 @login_required
 def assign_user_to_group(current_user, user_id):
     """将用户分配到用户组或管理员组"""
-    if not current_user.is_admin:
+    if not current_user.is_admin()():
         return jsonify({
             'success': False,
             'error': {
@@ -266,7 +266,7 @@ def assign_user_to_group(current_user, user_id):
         user.user_group_id = user_group_id
     
     # 分配管理员组（仅限管理员）
-    if 'admin_group_id' in data and user.is_admin:
+    if 'admin_group_id' in data and user.is_admin():
         admin_group_id = data['admin_group_id']
         if admin_group_id:
             admin_group = AdminGroup.query.get(admin_group_id)
@@ -293,7 +293,7 @@ def assign_user_to_group(current_user, user_id):
 @login_required
 def get_assignable_users(current_user):
     """获取当前管理员可以分配任务的用户列表"""
-    if not current_user.is_admin:
+    if not current_user.is_admin()():
         return jsonify({
             'success': False,
             'error': {

@@ -159,7 +159,7 @@ export function FileUpload({ onFileSelect, accept = '.jsonl', maxSize = 10 * 102
                   选择或拖拽JSONL文件
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  文件格式：每行一个JSON对象，包含 "question" 和 "answer" 字段
+                  文件格式：每行一个JSON对象，包含 "prompt" 和 "completion" 字段
                 </p>
                 <div className="space-y-2 text-sm text-gray-500">
                   <p>支持的格式：.jsonl</p>

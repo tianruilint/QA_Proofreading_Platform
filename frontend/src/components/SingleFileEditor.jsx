@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, Download, Save, FileText, AlertCircle } from 'lucide-react';
+import { Upload, Download, Save, FileText, AlertCircle, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
@@ -7,39 +7,64 @@ import { FileUpload } from './FileUpload';
 import { QAEditor } from './QAEditor';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { apiClient } from '../lib/api.js';
+import { useGuestSession } from '../hooks/useGuestSession.jsx';
 
-export function SingleFileEditor() {
+export function SingleFileEditor({ isGuestMode: propIsGuestMode, onSessionSave, currentSession }) {
   const [file, setFile] = useState(null);
-  const [qaPairs, setQAPairs] = useState([]);
+  const [itemsPerPage] = useState(5); // 每页显示5个QA对，避免页面过长
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [uploadedFileId, setUploadedFileId] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showUploadArea, setShowUploadArea] = useState(true); // 控制上传区域显示
+  const [sessionName, setSessionName] = useState(''); // 会话名称
   const { user, isAuthenticated } = useAuth();
+  const { records: guestRecords, currentRecordIndex: guestCurrentRecordIndex, hiddenItems: guestHiddenItems, showAll: guestShowAll, hasMarkedCorrect: guestHasMarkedCorrect, loadRecords: loadGuestRecords, updateRecord: updateGuestRecord, goToRecord: goToGuestRecord, markCorrect: guestMarkCorrect, toggleShowAll: guestToggleShowAll, clearSession: clearGuestSession } = useGuestSession();
 
   // 访客模式状态
-  const [guestSession, setGuestSession] = useState(null);
-  const [isGuestMode, setIsGuestMode] = useState(!isAuthenticated);
+  const isGuestMode = propIsGuestMode || !isAuthenticated;
 
-  useEffect(() => {
-    setIsGuestMode(!isAuthenticated);
-  }, [isAuthenticated]);
+  // 登录模式状态
+  const [qaPairsState, setQAPairsState] = useState([]);
+  const [currentPageState, setCurrentPageState] = useState(1);
+  const [hiddenItemsState, setHiddenItemsState] = useState([]); // 隐藏的QA对
+  const [showAllState, setShowAllState] = useState(false); // 是否显示全部
+  const [hasMarkedCorrectState, setHasMarkedCorrectState] = useState(false); // 是否点击过正确按钮
 
-  const parseJSONLFile = (file) => {
+  // 根据模式选择数据源
+  const qaPairs = isGuestMode ? guestRecords : qaPairsState;
+  const setQAPairs = isGuestMode ? loadGuestRecords : setQAPairsState;
+  const currentPage = isGuestMode ? guestCurrentRecordIndex + 1 : currentPageState;
+  const setCurrentPage = isGuestMode ? (page) => goToGuestRecord(page - 1) : setCurrentPageState;
+  const hiddenItems = isGuestMode ? guestHiddenItems : hiddenItemsState;
+  const showAll = isGuestMode ? guestShowAll : showAllState;
+  const hasMarkedCorrect = isGuestMode ? guestHasMarkedCorrect : hasMarkedCorrectState;
+
+  const totalPages = Math.ceil(qaPairs.length / itemsPerPage);
+  const currentQAPairs = qaPairs.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const parseJSONLFile = async (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const text = e.target.result;
-          const lines = text.split('\n').filter(line => line.trim());
+          const lines = text.split("\n").filter(line => line.trim());
           const pairs = lines.map((line, index) => {
             try {
               const obj = JSON.parse(line);
               return {
                 id: `temp_${index}`,
                 index_in_file: index,
-                prompt: obj.question || obj.prompt || '',
-                completion: obj.answer || obj.completion || ''
+                prompt: obj.prompt || obj.question || "",
+                completion: obj.completion || obj.answer || ""
               };
             } catch (err) {
               throw new Error(`第 ${index + 1} 行JSON格式错误: ${err.message}`);
@@ -50,7 +75,7 @@ export function SingleFileEditor() {
           reject(error);
         }
       };
-      reader.onerror = () => reject(new Error('文件读取失败'));
+      reader.onerror = () => reject(new Error("文件读取失败"));
       reader.readAsText(file);
     });
   };
@@ -58,80 +83,151 @@ export function SingleFileEditor() {
   const handleFileSelect = async (selectedFile) => {
     if (!selectedFile) {
       setFile(null);
-      setQAPairs([]);
+      setQAPairs([]); // This will call loadGuestRecords([]) for guest mode
       setUploadedFileId(null);
-      setGuestSession(null);
+      clearGuestSession(); // Clear guest session data
       setHasChanges(false);
+      setShowUploadArea(true);
+      setSessionName("");
+      // 重置隐藏相关状态
+      setHiddenItemsState([]);
+      setShowAllState(false);
+      setHasMarkedCorrectState(false);
       return;
     }
 
     setFile(selectedFile);
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       if (isGuestMode) {
-        // 访客模式：本地解析文件
+        // 访客模式：本地解析文件并加载到 guest session
         const pairs = await parseJSONLFile(selectedFile);
-        setQAPairs(pairs);
-        
-        // 创建访客会话
-        const sessionData = pairs.map(pair => ({
-          prompt: pair.prompt,
-          completion: pair.completion
-        }));
-        
-        const response = await apiClient.createGuestFileSession(selectedFile.name, sessionData);
-        if (response.success) {
-          setGuestSession(response.data);
-        }
+        loadGuestRecords(pairs);
       } else {
         // 登录模式：上传到服务器
         const response = await apiClient.uploadFile(selectedFile);
         if (response.success) {
           setUploadedFileId(response.data.file.id);
-          // 获取QA对数据
+          // 确保在设置uploadedFileId后立即获取QA对
           const qaResponse = await apiClient.getFileQAPairs(response.data.file.id);
           if (qaResponse.success) {
-            setQAPairs(qaResponse.data.qa_pairs);
+            setQAPairsState(qaResponse.data.qa_pairs);
+            if (qaResponse.data.qa_pairs.length === 0) {
+              setError("文件上传成功，但未找到有效的QA对数据。请检查文件内容是否符合JSONL格式，且每行包含prompt和completion字段。");
+            }
+          } else {
+            setError(`获取QA对失败: ${qaResponse.error.message}`);
           }
+        } else {
+          setError(`文件上传失败: ${response.error.message}`);
         }
       }
+
+      setSessionName(selectedFile.name);
+      setShowUploadArea(false);
       setHasChanges(false);
+      setCurrentPage(1); // 重置到第一页
+      
+      // 重置隐藏相关状态（新文件）
+      setHiddenItemsState([]);
+      setShowAllState(false);
+      setHasMarkedCorrectState(false);
+      
+      // 添加到会话历史（仅登录用户）
+      if (!isGuestMode && onSessionSave) {
+        onSessionSave(selectedFile.name, response.data.file.id);
+      }
     } catch (error) {
       setError(error.message);
       setFile(null);
-      setQAPairs([]);
+      setQAPairs([]); // This will call loadGuestRecords([]) for guest mode
     } finally {
       setLoading(false);
     }
   };
 
+  // 处理会话切换
+  useEffect(() => {
+    if (currentSession && !isGuestMode) {
+      // 模拟重新加载会话数据
+      const loadSessionData = async () => {
+        try {
+          setLoading(true);
+          setError("");
+          
+          // 创建一个模拟的文件对象
+          const sessionFile = {
+            name: currentSession.name,
+            type: 'application/jsonl'
+          };
+          
+          setFile(sessionFile);
+          setSessionName(currentSession.name);
+          setShowUploadArea(false);
+          
+          // 如果会话有保存的数据，恢复隐藏状态
+          if (currentSession.data) {
+            setHiddenItemsState(currentSession.data.hiddenItems || []);
+            setShowAllState(currentSession.data.showAll || false);
+            setHasMarkedCorrectState(currentSession.data.hasMarkedCorrect || false);
+            setCurrentPageState(currentSession.data.currentPage || 1);
+          } else {
+            // 重置状态
+            setHiddenItemsState([]);
+            setShowAllState(false);
+            setHasMarkedCorrectState(false);
+            setCurrentPageState(1);
+          }
+          
+          // 这里应该从服务器重新加载会话数据
+          if (currentSession.fileId) {
+            const qaResponse = await apiClient.getFileQAPairs(currentSession.fileId);
+            if (qaResponse.success) {
+              setQAPairsState(qaResponse.data.qa_pairs);
+            } else {
+              setError(`加载会话QA对失败: ${qaResponse.error.message}`);
+            }
+          } else {
+            setQAPairsState([]); // 如果没有fileId，则清空QA对
+          }
+          
+        } catch (error) {
+          setError(`加载会话失败: ${error.message}`);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      loadSessionData();
+    }
+  }, [currentSession, isGuestMode]);
+
   const handleQAUpdate = async (qaId, updateData) => {
     try {
       if (isGuestMode) {
         // 访客模式：本地更新
-        const updatedPairs = qaPairs.map(qa => 
-          qa.id === qaId ? { ...qa, ...updateData } : qa
-        );
-        setQAPairs(updatedPairs);
-        setHasChanges(true);
-        
-        // 更新访客会话
-        if (guestSession) {
-          const sessionData = updatedPairs.map(pair => ({
-            prompt: pair.prompt,
-            completion: pair.completion
-          }));
-          await apiClient.updateGuestSession(guestSession.session_id, sessionData);
+        const index = qaPairs.findIndex(qa => qa.id === qaId);
+        if (index !== -1) {
+          updateGuestRecord(index, { ...qaPairs[index], ...updateData });
+          setHasChanges(true);
         }
       } else {
-        // 登录模式：服务器更新
-        await apiClient.updateQAPair(uploadedFileId, qaId, updateData);
+        // 登录模式：服务器更新，添加编辑者信息
+        const updatePayload = {
+          ...updateData,
+          edited_by: user?.id,
+          editor: {
+            id: user?.id,
+            display_name: user?.display_name
+          }
+        };
+        await apiClient.updateQAPair(uploadedFileId, qaId, updatePayload);
         // 重新获取数据
         const response = await apiClient.getFileQAPairs(uploadedFileId);
         if (response.success) {
-          setQAPairs(response.data.qa_pairs);
+          setQAPairsState(response.data.qa_pairs);
         }
       }
     } catch (error) {
@@ -144,28 +240,43 @@ export function SingleFileEditor() {
       if (isGuestMode) {
         // 访客模式：本地删除
         const updatedPairs = qaPairs.filter(qa => qa.id !== qaId);
-        setQAPairs(updatedPairs);
+        loadGuestRecords(updatedPairs);
         setHasChanges(true);
-        
-        // 更新访客会话
-        if (guestSession) {
-          const sessionData = updatedPairs.map(pair => ({
-            prompt: pair.prompt,
-            completion: pair.completion
-          }));
-          await apiClient.updateGuestSession(guestSession.session_id, sessionData);
-        }
       } else {
         // 登录模式：服务器删除
         await apiClient.deleteQAPair(uploadedFileId, qaId);
         // 重新获取数据
         const response = await apiClient.getFileQAPairs(uploadedFileId);
         if (response.success) {
-          setQAPairs(response.data.qa_pairs);
+          setQAPairsState(response.data.qa_pairs);
         }
       }
     } catch (error) {
       throw error;
+    }
+  };
+
+  const handleMarkCorrect = async (qaId) => {
+    try {
+      if (isGuestMode) {
+        // 访客模式：使用guest session的markCorrect
+        guestMarkCorrect(qaId);
+      } else {
+        // 登录模式：将QA对标记为正确并隐藏
+        setHiddenItemsState(prev => [...prev, qaId]);
+        setHasMarkedCorrectState(true); // 标记已点击过正确按钮
+      }
+      setHasChanges(true);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleToggleShowAll = () => {
+    if (isGuestMode) {
+      guestToggleShowAll();
+    } else {
+      setShowAllState(prev => !prev);
     }
   };
 
@@ -174,14 +285,29 @@ export function SingleFileEditor() {
       let blob;
       let filename;
 
-      if (isGuestMode && guestSession) {
-        blob = await apiClient.exportGuestSession(guestSession.session_id, format);
-        filename = `${guestSession.filename.replace(/\.[^/.]+$/, '')}_edited.${format}`;
+      if (isGuestMode) {
+        // 访客模式：直接从 guestRecords 导出
+        const dataToExport = guestRecords.map(qa => ({
+          prompt: qa.prompt,
+          completion: qa.completion
+        }));
+        
+        if (format === 'jsonl') {
+          const jsonlContent = dataToExport.map(item => JSON.stringify(item)).join('\n');
+          blob = new Blob([jsonlContent], { type: 'application/jsonl' });
+          filename = `guest_session_${Date.now()}.jsonl`;
+        } else if (format === 'excel') {
+          // For simplicity, let's assume a basic Excel export for guest mode
+          // In a real app, you'd use a library like 'xlsx' to create a proper Excel file
+          const csvContent = "prompt,completion\n" + dataToExport.map(item => `"${item.prompt.replace(/"/g, '""')}","${item.completion.replace(/"/g, '""')}"`).join('\n');
+          blob = new Blob([csvContent], { type: 'text/csv' });
+          filename = `guest_session_${Date.now()}.csv`; // Excel can open CSV
+        }
       } else if (uploadedFileId) {
         blob = await apiClient.exportFile(uploadedFileId, format);
-        filename = `${file.name.replace(/\.[^/.]+$/, '')}_edited.${format}`;
+        filename = `${file.name.replace(/\.[^/.]+$/, ".")}${format}`;
       } else {
-        throw new Error('没有可导出的文件');
+        throw new Error("没有可导出的文件");
       }
 
       // 下载文件
@@ -201,119 +327,208 @@ export function SingleFileEditor() {
     }
   };
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* 页面标题 */}
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold text-gray-900">单文件QA对校对</h1>
-        <p className="text-gray-600">
-          {isGuestMode 
-            ? '访客模式：上传JSONL文件进行临时编辑，数据不会保存到服务器'
-            : '上传JSONL文件进行QA对编辑和校对，支持数据持久化存储'
-          }
-        </p>
-      </div>
+  const handleBackToUpload = () => {
+    setShowUploadArea(true);
+    setFile(null);
+    setQAPairs([]); // This will call loadGuestRecords([]) for guest mode
+    setUploadedFileId(null);
+    clearGuestSession(); // Clear guest session data
+    setHasChanges(false);
+    setSessionName("");
+    setCurrentPage(1);
+    setError("");
+  };
 
-      {/* 模式提示 */}
-      {isGuestMode && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            您当前处于访客模式，编辑的数据仅在当前会话中有效。如需永久保存，请登录后使用。
-          </AlertDescription>
-        </Alert>
-      )}
+  // 如果显示上传区域
+  if (showUploadArea) {
+    return (
+      <div className="h-full flex flex-col">
+        {/* 页面标题 */}
+        <div className="text-center space-y-2 mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">单文件QA对校对</h1>
+          <p className="text-gray-600">
+            {isGuestMode 
+              ? '访客模式：上传JSONL文件进行临时编辑，数据不会保存到服务器'
+              : '上传JSONL文件进行QA对编辑和校对，支持数据持久化存储'
+            }
+          </p>
+        </div>
 
-      {/* 文件上传区域 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5" />
-            文件上传
-          </CardTitle>
-          <CardDescription>
-            选择JSONL格式的文件开始编辑。文件中每行应包含一个JSON对象，包含question和answer字段。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FileUpload onFileSelect={handleFileSelect} />
-        </CardContent>
-      </Card>
+        {/* 模式提示 */}
+        {isGuestMode && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              您当前处于访客模式，编辑的数据仅在当前会话中有效。如需永久保存，请登录后使用。
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {/* 加载状态 */}
-      {loading && (
+        {/* 文件上传区域 */}
         <Card>
-          <CardContent className="p-8 text-center">
-            <div className="flex items-center justify-center gap-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              <span className="text-gray-600">
-                {isGuestMode ? '解析文件中...' : '上传文件中...'}
-              </span>
-            </div>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="w-5 h-5" />
+              文件上传
+            </CardTitle>
+            <CardDescription>
+              选择JSONL格式的文件开始编辑。文件中每行应包含一个JSON对象，包含prompt和completion字段。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FileUpload onFileSelect={handleFileSelect}/>
           </CardContent>
         </Card>
-      )}
+
+        {/* 加载状态 */}
+        {loading && (
+          <Card className="mt-4">
+            <CardContent className="p-8 text-center">
+              <div className="flex items-center justify-center gap-3">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <span className="text-gray-600">
+                  {isGuestMode ? '解析文件中...' : '上传文件中...'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 错误提示 */}
+        {error && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+      </div>
+    );
+  }
+
+  // 工作台模式
+  return (
+    <div className="h-full flex flex-col">
+      {/* 会话头部 */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-gray-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBackToUpload}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            返回上传
+          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <FileText className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900 break-all">{sessionName}</h2>
+            <span className="text-sm text-gray-500">({qaPairs.length} 个QA对)</span>
+          </div>
+          {hasChanges && (
+            <span className="text-sm text-orange-600 bg-orange-100 px-2 py-1 rounded whitespace-nowrap">
+              有未保存的更改
+            </span>
+          )}
+        </div>
+        
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleExport('jsonl')}
+            disabled={qaPairs.length === 0}
+            className="flex-1 sm:flex-none"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            导出JSONL
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleExport('excel')}
+            disabled={qaPairs.length === 0}
+            className="flex-1 sm:flex-none"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            导出Excel
+          </Button>
+        </div>
+      </div>
 
       {/* 错误提示 */}
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      {/* QA对编辑器 */}
-      {qaPairs.length > 0 && (
-        <>
-          {/* 操作栏 */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium">
-                      {file?.name} ({qaPairs.length} 个QA对)
-                    </span>
-                  </div>
-                  {hasChanges && (
-                    <span className="text-sm text-orange-600 bg-orange-100 px-2 py-1 rounded">
-                      有未保存的更改
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleExport('jsonl')}
-                    disabled={qaPairs.length === 0}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    导出JSONL
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleExport('excel')}
-                    disabled={qaPairs.length === 0}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    导出Excel
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* QA对列表 */}
-          <QAEditor
-            qaPairs={qaPairs}
-            onUpdate={handleQAUpdate}
-            onDelete={handleQADelete}
-            showEditHistory={!isGuestMode}
-            currentUser={user}
-          />
-        </>
+      {/* 分页控件 */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
+          <span className="text-sm text-gray-600 text-center sm:text-left">
+            第 {currentPage} 页，共 {totalPages} 页 | 显示第 {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, qaPairs.length)} 个QA对
+          </span>
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(1)}
+              disabled={currentPage === 1}
+              className="hidden sm:inline-flex"
+            >
+              首页
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">上一页</span>
+            </Button>
+            <span className="px-3 py-1 bg-white border rounded text-sm">
+              {currentPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              <span className="hidden sm:inline">下一页</span>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(totalPages)}
+              disabled={currentPage === totalPages}
+              className="hidden sm:inline-flex"
+            >
+              末页
+            </Button>
+          </div>
+        </div>
       )}
+
+      {/* QA对编辑器 */}
+      <div className="flex-1 overflow-y-auto space-y-4">
+        <QAEditor
+          qaPairs={currentQAPairs}
+          onUpdate={handleQAUpdate}
+          onDelete={handleQADelete}
+          onMarkCorrect={handleMarkCorrect}
+          onToggleShowAll={handleToggleShowAll}
+          hiddenItems={hiddenItems}
+          showAll={showAll}
+          hasMarkedCorrect={hasMarkedCorrect}
+          showEditHistory={!isGuestMode}
+          currentUser={user}
+        />
+      </div>
     </div>
   );
 }

@@ -208,38 +208,40 @@ export function SingleFileEditor() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <div className="space-y-2">
-                <p className="text-lg font-medium">选择JSONL文件</p>
-                <p className="text-sm text-muted-foreground">
-                  文件格式：每行一个JSON对象，包含"prompt"和"completion"字段
-                </p>
-                <input
-                  type="file"
-                  accept=".jsonl"
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  className="hidden"
-                  id="file-upload"
-                />
-                <label htmlFor="file-upload">
-                  <Button asChild disabled={uploading}>
-                    <span>
-                      {uploading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          上传中...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="mr-2 h-4 w-4" />
-                          选择文件
-                        </>
-                      )}
-                    </span>
-                  </Button>
-                </label>
+            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-12 text-center min-h-[320px] flex items-center justify-center">
+              <div className="space-y-6">
+                <FileText className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
+                <div className="space-y-4">
+                  <p className="text-2xl font-medium">选择或拖拽JSONL文件</p>
+                  <p className="text-lg text-muted-foreground">
+                    文件格式：每行一个JSON对象，包含"prompt"和"completion"字段
+                  </p>
+                  <input
+                    type="file"
+                    accept=".jsonl"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label htmlFor="file-upload">
+                    <Button asChild disabled={uploading} size="lg" className="mt-6">
+                      <span>
+                        {uploading ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            上传中...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-5 w-5" />
+                            选择文件
+                          </>
+                        )}
+                      </span>
+                    </Button>
+                  </label>
+                </div>
               </div>
             </div>
           </CardContent>

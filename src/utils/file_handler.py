@@ -66,6 +66,7 @@ def parse_jsonl_file(file_path):
                     return None, f"第{line_num}行JSON格式错误: {str(e)}"
         
         if not qa_pairs:
+            current_app.logger.warning(f"文件 {file_path} 中没有有效的QA对")
             return None, "文件中没有有效的QA对"
         
         return qa_pairs, None

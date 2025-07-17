@@ -1,5 +1,8 @@
 from . import db, BaseModel
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+# 北京时间时区
+BEIJING_TZ = timezone(timedelta(hours=8))
 
 class QAPair(BaseModel):
     __tablename__ = 'qa_pairs'
@@ -75,14 +78,14 @@ class QAPair(BaseModel):
         self.prompt = prompt
         self.completion = completion
         self.edited_by = editor_id
-        self.edited_at = datetime.utcnow()
+        self.edited_at = datetime.now(BEIJING_TZ).replace(tzinfo=None)
         db.session.commit()
     
     def soft_delete(self, deleted_by):
         """软删除QA对"""
         self.is_deleted = True
         self.edited_by = deleted_by
-        self.edited_at = datetime.utcnow()
+        self.edited_at = datetime.now(BEIJING_TZ).replace(tzinfo=None)
         db.session.commit()
     
     def to_dict(self, include_edit_history=False):
@@ -102,7 +105,11 @@ class QAPair(BaseModel):
             data.update({
                 'edited_by': self.edited_by,
                 'edited_at': self.edited_at.isoformat() if self.edited_at else None,
-                'editor_name': self.editor.display_name if self.editor else None
+                'editor_name': self.editor.display_name if self.editor else None,
+                'editor': {
+                    'id': self.editor.id if self.editor else None,
+                    'display_name': self.editor.display_name if self.editor else None
+                } if self.editor else None
             })
         
         return data

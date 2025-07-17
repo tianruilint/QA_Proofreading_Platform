@@ -57,7 +57,7 @@ def get_users(current_user):
         )), 500
 
 @user_management_bp.route('/users', methods=['POST'])
-@super_admin_required
+@admin_required
 def create_user(current_user):
     """创建用户"""
     try:
@@ -82,12 +82,26 @@ def create_user(current_user):
                 error={'code': 'MISSING_FIELDS', 'message': '用户名和显示名称不能为空'}
             )), 400
         
-        # 验证角色
-        if role not in ['super_admin', 'admin', 'user']:
+        # 根据当前用户角色限制可创建的角色
+        if current_user.role == 'admin':
+            # 管理员只能创建普通用户
+            if role != 'user':
+                return jsonify(create_response(
+                    success=False,
+                    error={'code': 'FORBIDDEN', 'message': '管理员只能创建普通用户'}
+                )), 403
+        elif current_user.role == 'super_admin':
+            # 超级管理员可以创建任何角色
+            if role not in ['super_admin', 'admin', 'user']:
+                return jsonify(create_response(
+                    success=False,
+                    error={'code': 'INVALID_ROLE', 'message': '无效的角色'}
+                )), 400
+        else:
             return jsonify(create_response(
                 success=False,
-                error={'code': 'INVALID_ROLE', 'message': '无效的角色'}
-            )), 400
+                error={'code': 'FORBIDDEN', 'message': '权限不足'}
+            )), 403
         
         # 检查用户名是否已存在
         existing_user = User.get_by_username(username)
@@ -107,6 +121,13 @@ def create_user(current_user):
         
         # 验证组关联
         if role == 'admin' and admin_group_id:
+            # 只有超级管理员可以分配管理员组
+            if current_user.role != 'super_admin':
+                return jsonify(create_response(
+                    success=False,
+                    error={'code': 'FORBIDDEN', 'message': '管理员无权分配管理员组'}
+                )), 403
+                
             admin_group = AdminGroup.get_by_id(admin_group_id)
             if not admin_group or not admin_group.is_active:
                 return jsonify(create_response(
@@ -121,6 +142,16 @@ def create_user(current_user):
                     success=False,
                     error={'code': 'INVALID_GROUP', 'message': '无效的用户组'}
                 )), 400
+            
+            # 管理员只能分配自己可管理的用户组
+            if current_user.role == 'admin':
+                manageable_groups = current_user.get_manageable_user_groups()
+                manageable_group_ids = [group.id for group in manageable_groups]
+                if user_group_id not in manageable_group_ids:
+                    return jsonify(create_response(
+                        success=False,
+                        error={'code': 'FORBIDDEN', 'message': '无权分配该用户组'}
+                    )), 403
         
         # 创建用户
         user = User.create_user(
@@ -268,15 +299,45 @@ def delete_user(current_user, user_id):
         )), 500
 
 @user_management_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
-@super_admin_required
+@login_required
 def reset_user_password(current_user, user_id):
     """重置用户密码"""
     try:
         user = User.get_or_404(user_id)
-        
-        data = request.get_json()
-        new_password = data.get('new_password', '1111') if data else '1111'
-        
+
+        # 权限检查
+        if not current_user.is_super_admin():
+            if current_user.id != user_id: # 用户可以重置自己的密码
+                if current_user.is_admin():
+                    # 管理员只能重置其管理的用户组中的用户密码
+                    manageable_users = current_user.get_manageable_users()
+                    if user not in manageable_users:
+                        return jsonify(create_response(
+                            success=False,
+                            error={'code': 'FORBIDDEN', 'message': '权限不足，无法重置该用户密码'}
+                        )), 403
+                else:
+                    return jsonify(create_response(
+                        success=False,
+                        error={'code': 'FORBIDDEN', 'message': '权限不足，无法重置该用户密码'}
+                    )), 403
+
+        # 不能重置超级管理员的密码，除非是超级管理员自己
+        if user.is_super_admin() and not current_user.is_super_admin():
+            return jsonify(create_response(
+                success=False,
+                error={'code': 'FORBIDDEN', 'message': '无权重置超级管理员密码'}
+            )), 403
+
+        # 不能重置管理员的密码，除非是超级管理员
+        if user.is_admin() and not current_user.is_super_admin():
+            return jsonify(create_response(
+                success=False,
+                error={'code': 'FORBIDDEN', 'message': '无权重置管理员密码'}
+            )), 403
+
+        data = request.get_json(silent=True) or {}
+        new_password = data.get("new_password", "1111")
         # 验证密码
         is_valid, message = validate_password(new_password)
         if not is_valid:

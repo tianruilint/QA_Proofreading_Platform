@@ -79,6 +79,19 @@ class User(BaseModel):
             # 普通用户只能管理自己
             return [self]
     
+    def get_manageable_user_groups(self):
+        """获取当前用户可管理的用户组列表"""
+        if self.is_super_admin():
+            # 超级管理员可以管理所有用户组
+            from src.models.user_group import UserGroup
+            return UserGroup.query.filter_by(is_active=True).all()
+        elif self.is_admin() and self.admin_group:
+            # 管理员可以管理其管理员组关联的用户组
+            return list(self.admin_group.user_groups)
+        else:
+            # 普通用户不能管理用户组
+            return []
+    
     def to_dict(self, include_sensitive=False):
         """转换为字典"""
         data = {
@@ -90,7 +103,9 @@ class User(BaseModel):
             'admin_group_id': self.admin_group_id,
             'user_group_id': self.user_group_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'admin_group_name': self.admin_group.name if self.admin_group else None,
+            'user_group_name': self.user_group.name if self.user_group else None
         }
         
         if include_sensitive:

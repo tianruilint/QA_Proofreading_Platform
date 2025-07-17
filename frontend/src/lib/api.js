@@ -122,6 +122,13 @@ class ApiClient {
     return this.request(`/users/${userId}`, { method: "DELETE" });
   }
 
+  async resetUserPassword(userId) {
+    return this.request(`/users/${userId}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({}), // 发送一个空的JSON对象
+    });
+  }
+
   // 组管理
   async getAdminGroups(params = {}) {
     const queryString = new URLSearchParams(params).toString();
@@ -169,10 +176,10 @@ class ApiClient {
     return this.request(`/user-groups/${groupId}`, { method: "DELETE" });
   }
 
-  async linkUserGroups(adminGroupId, userGroupIds) {
+  async linkUserGroups(adminGroupId, data) {
     return this.request(`/admin-groups/${adminGroupId}/user-groups`, {
       method: "POST",
-      body: JSON.stringify({ user_group_ids: userGroupIds }),
+      body: JSON.stringify(data),
     });
   }
 

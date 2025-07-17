@@ -46,37 +46,41 @@ def create_app(config_name='default'):
     app.register_blueprint(task_management_bp, url_prefix='/api/v1')
     
     # 创建上传和导出目录
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(app.config['EXPORT_FOLDER'], exist_ok=True)
-    
-    @app.route('/', defaults={'path': ''}) 
-    @app.route('/<path:path>')
-    def serve(path):
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+    os.makedirs(app.config["EXPORT_FOLDER"], exist_ok=True)
+
+    @app.route("/guest")
+    def serve_guest():
+        return send_from_directory(app.static_folder, "index.html")
+
+    @app.route("/")
+    @app.route("/<path:path>")
+    def serve(path=""):
         """服务前端文件和SPA路由回退"""
         # 如果是API请求，返回404
-        if path.startswith('api/'):
+        if path.startswith("api/"):
             return jsonify({
-                'success': False, 
-                'error': {
-                    'code': 'NOT_FOUND', 
-                    'message': '请求的API不存在'
+                "success": False,
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "请求的API不存在"
                 }
             }), 404
-        
+
         # 检查静态文件是否存在
         if path and os.path.exists(os.path.join(app.static_folder, path)):
             return send_from_directory(app.static_folder, path)
-        
+
         # 对于所有其他请求，返回index.html（SPA路由回退）
-        index_path = os.path.join(app.static_folder, 'index.html')
+        index_path = os.path.join(app.static_folder, "index.html")
         if os.path.exists(index_path):
-            return send_from_directory(app.static_folder, 'index.html')
+            return send_from_directory(app.static_folder, "index.html")
         else:
             return jsonify({
-                'success': False,
-                'error': {
-                    'code': 'FRONTEND_NOT_200_FOUND',
-                    'message': '前端文件未找到，请先构建前端项目'
+                "success": False,
+                "error": {
+                    "code": "FRONTEND_NOT_200_FOUND",
+                    "message": "前端文件未找到，请先构建前端项目"
                 }
             }), 404
     
@@ -138,96 +142,91 @@ def create_app(config_name='default'):
     # 初始化数据库
     with app.app_context():
         try:
-            # 每次启动时都删除旧数据库文件，确保重新创建
-            db_path = os.path.join(app.instance_path, 'qa_platform.db')
-            if os.path.exists(db_path):
-                os.remove(db_path)
-                print(f"已删除旧数据库文件: {db_path}")
-
             # 创建数据库表
             db.create_all()
             
             # 检查是否需要初始化数据
             if not User.query.filter_by(role='super_admin').first():
-                init_database()
+                init_database(app)
                 
         except Exception as e:
             print(f"数据库初始化失败: {e}")
     
     return app
 
-def init_database():
+def init_database(app):
     """初始化数据库数据"""
-    try:
-        # 创建超级管理员
-        super_admin = User.create_user(
-            username='super_admin',
-            password='1111',
-            display_name='超级管理员',
-            role='super_admin'
-        )
-        
-        # 创建默认管理员组
-        admin_group = AdminGroup.create_group(
-            name='默认管理员组',
-            description='系统默认创建的管理员组',
-            created_by=super_admin.id
-        )
-        
-        # 创建默认用户组
-        user_group = UserGroup.create_group(
-            name='默认用户组',
-            description='系统默认创建的用户组',
-            created_by=super_admin.id
-        )
-        
-        # 关联默认管理员组和用户组
-        admin_group.add_user_group(user_group)
-        
-        # 创建示例管理员（张三）
-        admin_user = User.create_user(
-            username='zhangsan',
-            password='1111',
-            display_name='张三管理员',
-            role='admin',
-            admin_group_id=admin_group.id
-        )
-        
-        # 创建示例用户
-        User.create_user(
-            username='lisi',
-            password='1111',
-            display_name='李四',
-            role='user',
-            user_group_id=user_group.id
-        )
-        
-        User.create_user(
-            username='wangwu',
-            password='1111',
-            display_name='王五',
-            role='user',
-            user_group_id=user_group.id
-        )
-        
-        User.create_user(
-            username='zhaoliu',
-            password='1111',
-            display_name='赵六',
-            role='user',
-            user_group_id=user_group.id
-        )
-        
-        print("数据库初始化完成")
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"数据库初始化失败: {e}")
+    with app.app_context():
+        try:
+            # 创建超级管理员
+            super_admin = User.create_user(
+                username='superadmin',
+                password='password',
+                display_name='超级管理员',
+                role='super_admin'
+            )
+
+            # 创建管理员组
+            admin_group_dev = AdminGroup.create_group(
+                name='开发组管理员',
+                description='负责开发相关任务的管理员',
+                created_by=super_admin.id
+            )
+            admin_group_ops = AdminGroup.create_group(
+                name='运营组管理员',
+                description='负责运营相关任务的管理员',
+                created_by=super_admin.id
+            )
+
+            # 创建用户组
+            user_group_dev = UserGroup.create_group(
+                name='开发组用户',
+                description='开发部门的普通用户',
+                created_by=super_admin.id
+            )
+            user_group_ops = UserGroup.create_group(
+                name='运营组用户',
+                description='运营部门的普通用户',
+                created_by=super_admin.id
+            )
+
+            # 关联管理员组和用户组
+            admin_group_dev.add_user_group(user_group_dev)
+            admin_group_ops.add_user_group(user_group_ops)
+
+            # 创建其他用户
+            User.create_user(
+                username='adminuser',
+                password='password',
+                display_name='管理员A',
+                role='admin',
+                admin_group_id=admin_group_dev.id
+            )
+            User.create_user(
+                username='user1',
+                password='password',
+                display_name='普通用户1',
+                role='user',
+                user_group_id=user_group_dev.id
+            )
+            User.create_user(
+                username='user2',
+                password='password',
+                display_name='普通用户2',
+                role='user',
+                user_group_id=user_group_ops.id
+            )
+            
+            db.session.commit()
+            print("数据库初始化完成")
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"数据库初始化失败: {e}")
 
 # 创建应用实例
 app = create_app(os.environ.get('FLASK_ENV', 'default'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
-
 

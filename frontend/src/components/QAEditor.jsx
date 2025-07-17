@@ -12,12 +12,18 @@ export function QAEditor({
   onDelete, 
   readOnly = false, 
   showEditHistory = false,
-  currentUser = null 
+  currentUser = null,
+  hiddenItems = [],
+  onMarkCorrect,
+  onToggleShowAll,
+  showAll = false,
+  hasMarkedCorrect = false
 }) {
   const [editingIndex, setEditingIndex] = useState(null);
   const [editData, setEditData] = useState({ prompt: '', completion: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const startEdit = (index, qa) => {
     setEditingIndex(index);
@@ -26,12 +32,14 @@ export function QAEditor({
       completion: qa.completion || ''
     });
     setError('');
+    setSuccessMessage('');
   };
 
   const cancelEdit = () => {
     setEditingIndex(null);
     setEditData({ prompt: '', completion: '' });
     setError('');
+    setSuccessMessage('');
   };
 
   const saveEdit = async (index, qa) => {
@@ -42,18 +50,33 @@ export function QAEditor({
 
     setSaving(true);
     setError('');
+    setSuccessMessage('');
 
     try {
       await onUpdate(qa.id, {
         prompt: editData.prompt.trim(),
-        completion: editData.completion.trim()
+        completion: editData.completion.trim(),
+        is_edited: true // 标记为已编辑
       });
       setEditingIndex(null);
       setEditData({ prompt: '', completion: '' });
+      setSuccessMessage('保存成功！');
+      // 3秒后清除成功消息
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       setError(error.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleMarkCorrect = async (qa) => {
+    try {
+      if (onMarkCorrect) {
+        await onMarkCorrect(qa.id);
+      }
+    } catch (error) {
+      setError(error.message);
     }
   };
 
@@ -68,12 +91,22 @@ export function QAEditor({
   };
 
   const formatDateTime = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleString('zh-CN');
+    if (!dateString) return "";
+    // 确保日期字符串是有效的，并指定时区为北京时间
+    return new Date(dateString).toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone: "Asia/Shanghai",
+    });
   };
 
   const getEditStatusBadge = (qa) => {
-    if (!qa.edited_by) {
+    if (!qa.edited_by && !qa.is_edited) {
       return <Badge variant="secondary">原始</Badge>;
     }
     return <Badge variant="outline">已编辑</Badge>;
@@ -89,6 +122,9 @@ export function QAEditor({
     );
   }
 
+  // 过滤隐藏的QA对
+  const visibleQAPairs = showAll ? qaPairs : qaPairs.filter(qa => !hiddenItems.includes(qa.id));
+
   return (
     <div className="space-y-4">
       {error && (
@@ -97,8 +133,23 @@ export function QAEditor({
         </Alert>
       )}
 
-      {qaPairs.map((qa, index) => (
-        <Card key={qa.id || index} className="relative">
+      {successMessage && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* 显示全部按钮 - 只有点击过正确按钮且有隐藏项时才显示 */}
+      {hasMarkedCorrect && hiddenItems.length > 0 && (
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={onToggleShowAll}>
+            {showAll ? '隐藏已确认' : `显示全部 (${hiddenItems.length} 个已隐藏)`}
+          </Button>
+        </div>
+      )}
+
+      {visibleQAPairs.map((qa, index) => (
+        <Card key={qa.id || index} className="relative hover:shadow-md transition-shadow duration-200 border-gray-200">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-gray-600">
@@ -133,7 +184,16 @@ export function QAEditor({
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => handleMarkCorrect(qa)}
+                          className="text-green-600 hover:text-green-700 hover:bg-green-50 transition-colors duration-200"
+                        >
+                          正确
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => startEdit(index, qa)}
+                          className="hover:bg-blue-50 transition-colors duration-200"
                         >
                           <Edit3 className="w-3 h-3 mr-1" />
                           编辑
@@ -142,7 +202,7 @@ export function QAEditor({
                           size="sm"
                           variant="outline"
                           onClick={() => handleDelete(qa)}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors duration-200"
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>

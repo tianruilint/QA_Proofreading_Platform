@@ -64,6 +64,7 @@ def upload_file(current_user):
         # 创建QA对记录
         QAPair.create_from_jsonl_data(file_record.id, qa_pairs)
         
+        current_app.logger.info(f"文件 {file.filename} 上传成功，文件ID: {file_record.id}, QA对数量: {len(qa_pairs)}")
         return jsonify(create_response(
             success=True,
             data={
@@ -144,6 +145,7 @@ def get_file_qa_pairs(current_user, file_id):
         
         qa_pairs = [qa.to_dict(include_edit_history=True) for qa in pagination.items]
         
+        current_app.logger.info(f"文件 {file_id} 的QA对列表获取成功，共 {pagination.total} 条")
         return jsonify(create_response(
             success=True,
             data={
