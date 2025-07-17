@@ -4,6 +4,7 @@ from src.models.admin_group import AdminGroup
 from src.models.user_group import UserGroup
 from src.models import db
 from src.utils.auth import login_required, create_response, generate_token
+from datetime import datetime, timezone, timedelta
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -33,6 +34,9 @@ def login():
             error={"code": "ACCOUNT_INACTIVE", "message": "账户已被禁用，请联系管理员"}
         )), 403
 
+    beijing_tz = timezone(timedelta(hours=8))
+    user.last_login_at = datetime.now(beijing_tz)
+    db.session.commit()
     access_token = generate_token(user.id, user.role)
     return jsonify(create_response(
         success=True,

@@ -1,6 +1,6 @@
 import os
 from . import db, BaseModel
-from datetime import datetime
+from datetime import datetime, timezone, timedelta # 1. 导入 timezone 和 timedelta
 
 class File(BaseModel):
     __tablename__ = 'files'
@@ -53,7 +53,6 @@ class File(BaseModel):
         if self.uploaded_by == user.id:
             return True
         if user.is_admin():
-            # 管理员可以访问其可管理用户上传的文件
             manageable_users = user.get_manageable_users()
             return self.uploader in manageable_users
         return False
@@ -72,18 +71,25 @@ class File(BaseModel):
             if os.path.exists(self.file_path):
                 os.remove(self.file_path)
         except Exception:
-            pass  # 忽略删除失败的情况
+            pass
     
     def delete(self):
         """软删除文件记录"""
         self.is_deleted = True
-        # 同时软删除相关的QA对
         for qa_pair in self.qa_pairs:
             qa_pair.is_deleted = True
         db.session.commit()
     
     def to_dict(self, include_qa_pairs=False):
         """转换为字典"""
+        
+        # 2. 定义北京时区
+        beijing_tz = timezone(timedelta(hours=8))
+
+        # 3. 将UTC时间转换为北京时间
+        local_created_at = self.created_at.replace(tzinfo=timezone.utc).astimezone(beijing_tz) if self.created_at else None
+        local_updated_at = self.updated_at.replace(tzinfo=timezone.utc).astimezone(beijing_tz) if self.updated_at else None
+
         data = {
             'id': self.id,
             'filename': self.filename,
@@ -94,12 +100,14 @@ class File(BaseModel):
             'uploaded_by': self.uploaded_by,
             'is_hidden': self.is_hidden,
             'is_deleted': self.is_deleted,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            # 4. 使用转换后的北京时间
+            'created_at': local_created_at.isoformat() if local_created_at else None,
+            'updated_at': local_updated_at.isoformat() if local_updated_at else None
         }
         
         if include_qa_pairs:
             data['qa_pairs'] = [qa.to_dict() for qa in self.qa_pairs.filter_by(is_deleted=False)]
         
         return data
+
 

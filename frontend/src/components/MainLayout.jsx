@@ -8,11 +8,13 @@ import {
   X,
   User,
   Shield,
-  Crown
+  Crown,
+  MoreVertical,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { Badge } from './ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,9 +22,130 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { useAuth } from '../hooks/useAuth.jsx';
 
-export function MainLayout({ children, currentPage, onPageChange, sessionHistory = [], onSessionSelect }) {
+// 会话历史项组件
+function SessionItem({ session, onSessionSelect, onRename, onDelete }) {
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [newName, setNewName] = useState(session.name);
+
+  const handleRename = (e) => {
+    e.preventDefault();
+    if (newName.trim()) {
+      onRename(session.fileId, newName.trim());
+      setIsRenameOpen(false);
+    }
+  };
+
+  const handleDelete = () => {
+    onDelete(session.fileId);
+    setIsDeleteOpen(false);
+  };
+
+  return (
+    <>
+      <div className="group flex items-center justify-between text-sm text-gray-600 p-2 rounded hover:bg-gray-100 transition-colors">
+        <div 
+          className="flex-1 cursor-pointer"
+          onClick={() => onSessionSelect && onSessionSelect(session)}
+        >
+          <p className="font-medium truncate">{session.name}</p>
+          <p className="text-xs text-gray-500">{session.date}</p>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setIsRenameOpen(true)}>
+              <Edit className="mr-2 h-4 w-4" />
+              <span>重命名</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-red-600">
+              <Trash2 className="mr-2 h-4 w-4" />
+              <span>删除</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* 重命名对话框 */}
+      <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>重命名会话</DialogTitle>
+            <DialogDescription>
+              为您的会话输入一个新的名称。
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleRename}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  新名称
+                </Label>
+                <Input
+                  id="name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit">保存</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 删除确认对话框 */}
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确定要删除吗？</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作将删除会话 “{session.name}”。此操作无法撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+
+export function MainLayout({ children, currentPage, onPageChange, sessionHistory = [], onSessionSelect, onRenameSession, onDeleteSession }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuth();
 
@@ -32,14 +155,14 @@ export function MainLayout({ children, currentPage, onPageChange, sessionHistory
       id: 'single-file',
       icon: FileText,
       description: '上传JSONL文件进行QA对编辑和校对',
-      roles: ['admin', 'user']
+      roles: ['admin', 'user'] // 修正：移除 'super_admin'
     },
     {
       name: '协作任务',
       id: 'tasks',
       icon: Users,
       description: '多人协作校对任务管理',
-      roles: ['admin', 'user']
+      roles: ['admin', 'user'] // 修正：移除 'super_admin'
     },
     {
       name: '用户管理',
@@ -89,7 +212,6 @@ export function MainLayout({ children, currentPage, onPageChange, sessionHistory
 
   return (
     <div className="h-screen bg-gray-50 flex">
-      {/* 移动端侧边栏遮罩 */}
       {sidebarOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
@@ -97,11 +219,9 @@ export function MainLayout({ children, currentPage, onPageChange, sessionHistory
         />
       )}
 
-      {/* 左侧导航栏 */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:flex lg:flex-col ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        {/* 侧边栏头部 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -119,7 +239,6 @@ export function MainLayout({ children, currentPage, onPageChange, sessionHistory
           </Button>
         </div>
 
-        {/* 导航菜单 */}
         <nav className="p-4 space-y-2 flex-shrink-0">
           {filteredNavigation.map((item) => (
             <button
@@ -143,24 +262,23 @@ export function MainLayout({ children, currentPage, onPageChange, sessionHistory
           ))}
         </nav>
 
-        {/* 会话历史记录 - 在单文件校对和协作任务页面显示 */}
+        {/* 会话历史记录 */}
         {(currentPage === 'single-file' || currentPage === 'tasks') && (
           <div className="flex-1 p-4 border-t border-gray-200 overflow-y-auto">
             <h2 className="text-sm font-semibold text-gray-700 mb-2">会话历史</h2>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {sessionHistory.length > 0 ? (
-                sessionHistory.map((session, index) => (
-                  <div 
-                    key={session.id || index} 
-                    className="text-sm text-gray-600 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => onSessionSelect && onSessionSelect(session)}
-                  >
-                    <p className="font-medium truncate">{session.name}</p>
-                    <p className="text-xs text-gray-500">{session.date}</p>
-                  </div>
+                sessionHistory.map((session) => (
+                  <SessionItem 
+                    key={session.id}
+                    session={session}
+                    onSessionSelect={onSessionSelect}
+                    onRename={onRenameSession}
+                    onDelete={onDeleteSession}
+                  />
                 ))
               ) : (
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-500 p-2">
                   <p>暂无历史记录</p>
                 </div>
               )}
@@ -168,19 +286,6 @@ export function MainLayout({ children, currentPage, onPageChange, sessionHistory
           </div>
         )}
 
-        {/* 空白填充区域 - 当不显示会话历史时 */}
-        {!(currentPage === 'single-file' || currentPage === 'tasks') && (
-          <div className="flex-1 p-4 border-t border-gray-200 invisible">
-            <h2 className="text-sm font-semibold text-gray-700 mb-2">会话历史</h2>
-            <div className="space-y-2">
-              <div className="text-sm text-gray-600">
-                <p>暂无历史记录</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 用户信息 */}
         <div className="p-4 border-t border-gray-200 flex-shrink-0 mt-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -220,9 +325,7 @@ export function MainLayout({ children, currentPage, onPageChange, sessionHistory
         </div>
       </div>
 
-      {/* 右侧主内容区域 */}
       <div className="flex-1 flex flex-col h-screen">
-        {/* 顶部导航栏 */}
         <header className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-4">
@@ -240,28 +343,9 @@ export function MainLayout({ children, currentPage, onPageChange, sessionHistory
                 </h2>
               </div>
             </div>
-
-            <div className="flex items-center gap-3">
-              {/* 顶部用户信息显示 */}
-              <div className="hidden sm:flex items-center gap-2">
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback className="bg-blue-100 text-blue-600">
-                    {user?.display_name?.charAt(0) || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="text-sm">
-                  <div className="font-medium text-gray-900">{user?.display_name}</div>
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    {getRoleIcon(user?.role)}
-                    {getRoleName(user?.role)}
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </header>
 
-        {/* 页面内容 */}
         <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
           {children}
         </main>

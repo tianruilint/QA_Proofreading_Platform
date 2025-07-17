@@ -10,6 +10,7 @@ class User(BaseModel):
     display_name = db.Column(db.String(100), nullable=False)
     role = db.Column(db.Enum('super_admin', 'admin', 'user', name='user_role'), nullable=False, default='user')
     is_active = db.Column(db.Boolean, default=True, nullable=False)
+    last_login_at = db.Column(db.DateTime, nullable=True)
     
     # 外键关系
     admin_group_id = db.Column(db.Integer, db.ForeignKey('admin_groups.id'), nullable=True)
@@ -104,6 +105,7 @@ class User(BaseModel):
             'user_group_id': self.user_group_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
             'admin_group_name': self.admin_group.name if self.admin_group else None,
             'user_group_name': self.user_group.name if self.user_group else None
         }

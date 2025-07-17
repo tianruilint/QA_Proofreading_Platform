@@ -3,7 +3,9 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+import click
 from flask import Flask, send_from_directory, jsonify
+from flask.cli import with_appcontext
 from flask_cors import CORS
 from src.config import Config
 from src.models import db
@@ -45,6 +47,9 @@ def create_app(config_name='default'):
     app.register_blueprint(file_management_bp, url_prefix='/api/v1')
     app.register_blueprint(task_management_bp, url_prefix='/api/v1')
     
+    # 注册新的数据库初始化命令
+    app.cli.add_command(init_db_command)
+
     # 创建上传和导出目录
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     os.makedirs(app.config["EXPORT_FOLDER"], exist_ok=True)
@@ -57,7 +62,6 @@ def create_app(config_name='default'):
     @app.route("/<path:path>")
     def serve(path=""):
         """服务前端文件和SPA路由回退"""
-        # 如果是API请求，返回404
         if path.startswith("api/"):
             return jsonify({
                 "success": False,
@@ -67,11 +71,9 @@ def create_app(config_name='default'):
                 }
             }), 404
 
-        # 检查静态文件是否存在
         if path and os.path.exists(os.path.join(app.static_folder, path)):
             return send_from_directory(app.static_folder, path)
 
-        # 对于所有其他请求，返回index.html（SPA路由回退）
         index_path = os.path.join(app.static_folder, "index.html")
         if os.path.exists(index_path):
             return send_from_directory(app.static_folder, "index.html")
@@ -86,7 +88,6 @@ def create_app(config_name='default'):
     
     @app.errorhandler(404)
     def not_found(error):
-        """404错误处理"""
         return jsonify({
             'success': False,
             'error': {
@@ -97,7 +98,6 @@ def create_app(config_name='default'):
     
     @app.errorhandler(500)
     def internal_error(error):
-        """500错误处理"""
         db.session.rollback()
         return jsonify({
             'success': False,
@@ -109,7 +109,6 @@ def create_app(config_name='default'):
     
     @app.errorhandler(403)
     def forbidden(error):
-        """403错误处理"""
         return jsonify({
             'success': False,
             'error': {
@@ -120,7 +119,6 @@ def create_app(config_name='default'):
     
     @app.errorhandler(401)
     def unauthorized(error):
-        """401错误处理"""
         return jsonify({
             'success': False,
             'error': {
@@ -132,31 +130,26 @@ def create_app(config_name='default'):
     # 健康检查接口
     @app.route('/api/health')
     def health_check():
-        """健康检查"""
         return jsonify({
             'success': True,
             'message': 'QA对校对协作平台运行正常',
             'version': '2.0.0'
         })
     
-    # 初始化数据库
-    with app.app_context():
-        try:
-            # 创建数据库表
-            db.create_all()
-            
-            # 检查是否需要初始化数据
-            if not User.query.filter_by(role='super_admin').first():
-                init_database(app)
-                
-        except Exception as e:
-            print(f"数据库初始化失败: {e}")
+    # 注意：旧的自动初始化数据库的 with app.app_context() 块已被移除
     
     return app
 
-def init_database(app):
-    """初始化数据库数据"""
-    with app.app_context():
+@click.command('init-db')
+@with_appcontext
+def init_db_command():
+    """清除现有数据并创建新表。"""
+    db.create_all()
+    click.echo('数据库表结构已初始化。')
+    
+    # 检查是否需要填充初始数据
+    if not User.query.filter_by(role='super_admin').first():
+        click.echo('正在填充初始数据...')
         try:
             # 创建超级管理员
             super_admin = User.create_user(
@@ -218,11 +211,13 @@ def init_database(app):
             )
             
             db.session.commit()
-            print("数据库初始化完成")
+            click.echo("数据库初始化数据填充完成。")
             
         except Exception as e:
             db.session.rollback()
-            print(f"数据库初始化失败: {e}")
+            click.echo(f"数据库初始化失败: {e}")
+    else:
+        click.echo('数据库已包含数据，跳过填充步骤。')
 
 # 创建应用实例
 app = create_app(os.environ.get('FLASK_ENV', 'default'))
