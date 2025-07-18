@@ -260,6 +260,212 @@ class ApiClient {
   }
 
   // ... (其他任务管理等方法保持不变)
+
+  // 协作任务相关方法
+  async getCollaborationTasks(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/collaboration-tasks${queryString ? `?${queryString}` : ""}`);
+  }
+
+  async createCollaborationTask(formData) {
+    return this.request("/collaboration-tasks", {
+      method: "POST",
+      body: formData,
+      headers: {}
+    });
+  }
+
+  async getCollaborationTask(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}`);
+  }
+
+  async assignCollaborationTask(taskId, assignmentData) {
+    return this.request(`/collaboration-tasks/${taskId}/assign`, {
+      method: "POST",
+      body: JSON.stringify(assignmentData),
+    });
+  }
+
+  async getManageableUsersForTask(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/manageable-users`);
+  }
+
+  async submitCollaborationTaskAssignment(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/submit`, {
+      method: "POST",
+    });
+  }
+
+  async getCollaborationTaskQAPairs(taskId, params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/collaboration-tasks/${taskId}/qa-pairs${queryString ? `?${queryString}` : ""}`);
+  }
+
+  async exportCollaborationTask(taskId, exportType = "jsonl") {
+    const headers = {};
+    if (this.token) {
+      headers["Authorization"] = `Bearer ${this.token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/collaboration-tasks/${taskId}/export`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ type: exportType }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error?.message || "导出失败");
+    }
+
+    return response.blob();
+  }
+
+  async deleteCollaborationTask(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}`, { method: "DELETE" });
+  }
+
+  // 通知相关方法
+  async getNotifications(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/notifications${queryString ? `?${queryString}` : ""}`);
+  }
+
+  async markNotificationAsRead(notificationId) {
+    return this.request(`/notifications/${notificationId}/read`, {
+      method: "PUT",
+    });
+  }
+
+  async markAllNotificationsAsRead() {
+    return this.request("/notifications/mark-all-read", {
+      method: "PUT",
+    });
+  }
+
+  async getUnreadNotificationCount() {
+    return this.request("/notifications/unread-count");
+  }
+
+  async getTaskStatusNotifications() {
+    return this.request("/notifications/task-status");
+  }
+
+  // 协作任务草稿相关方法
+  async saveDraft(taskId, draftData) {
+    return this.request(`/collaboration-tasks/${taskId}/drafts`, {
+      method: "POST",
+      body: JSON.stringify(draftData),
+    });
+  }
+
+  async getDrafts(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/drafts`);
+  }
+
+  async getDraft(taskId, qaPairId) {
+    return this.request(`/collaboration-tasks/${taskId}/drafts/${qaPairId}`);
+  }
+
+  async clearDraft(taskId, qaPairId) {
+    return this.request(`/collaboration-tasks/${taskId}/drafts/${qaPairId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // 协作任务会话相关方法
+  async startTaskSession(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/sessions`, {
+      method: "POST",
+    });
+  }
+
+  async updateSessionActivity(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/sessions`, {
+      method: "PUT",
+    });
+  }
+
+  async endTaskSession(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/sessions`, {
+      method: "DELETE",
+    });
+  }
+
+  async getCurrentSession(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/sessions/current`);
+  }
+
+  async checkIdleStatus(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/idle-check`);
+  }
+
+  // 协作任务汇总相关方法
+  async getCollaborationTaskSummary(taskId, params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/collaboration-tasks/${taskId}/summary${queryString ? `?${queryString}` : ""}`);
+  }
+
+  async getCollaborationTaskProgress(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/progress`);
+  }
+
+  async getCollaborationTaskParticipants(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/participants`);
+  }
+
+  async updateSummaryItem(taskId, qaPairId, data) {
+    return this.request(`/collaboration-tasks/${taskId}/summary/${qaPairId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async createQualityCheck(taskId, data) {
+    return this.request(`/collaboration-tasks/${taskId}/quality-check`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getQualitySummary(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/quality-summary`);
+  }
+
+  // 协作任务最终处理相关方法
+  async rejectAssignment(taskId, data) {
+    return this.request(`/collaboration-tasks/${taskId}/reject-assignment`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async finalConfirmTask(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/final-confirm`, {
+      method: "POST",
+    });
+  }
+
+  async exportFinalResult(taskId) {
+    return this.request(`/collaboration-tasks/${taskId}/export-final`);
+  }
+
+  async batchQualityCheck(taskId, data) {
+    return this.request(`/collaboration-tasks/${taskId}/batch-quality-check`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async reopenTask(taskId, data) {
+    return this.request(`/collaboration-tasks/${taskId}/reopen`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

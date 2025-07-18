@@ -43,6 +43,7 @@ import {
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { NotificationBell } from './NotificationCenter';
 
 // 会话历史项组件
 function SessionItem({ session, onSessionSelect, onRename, onDelete }) {
@@ -342,6 +343,10 @@ export function MainLayout({ children, currentPage, onPageChange, sessionHistory
                   {filteredNavigation.find(item => item.id === currentPage)?.name || '首页'}
                 </h2>
               </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <NotificationBell />
             </div>
           </div>
         </header>

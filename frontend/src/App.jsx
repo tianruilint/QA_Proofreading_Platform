@@ -7,6 +7,7 @@ import { SingleFileEditor } from './components/SingleFileEditor';
 import { ChangePassword } from './components/ChangePassword';
 import { UserManagement } from './components/UserManagement';
 import { GroupManagement } from './components/GroupManagement';
+import { CollaborationTasks } from './components/CollaborationTasks';
 import { apiClient } from './lib/api.js';
 import { Toaster, toast } from 'sonner';
 
@@ -153,12 +154,7 @@ function AppContent() {
         // 3. 将新的清空函数传递给 SingleFileEditor
         return <SingleFileEditor onSessionSave={handleSessionSave} currentSession={currentSession} onBackToUpload={handleBackToUpload} />;
       case 'tasks':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">协作任务</h2>
-            <p className="text-gray-600">功能开发中...</p>
-          </div>
-        );
+        return <CollaborationTasks />;
       case 'user-management':
         return <UserManagement />;
       case 'group-management':

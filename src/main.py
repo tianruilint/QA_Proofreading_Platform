@@ -13,6 +13,10 @@ from src.models.user import User
 from src.models.admin_group import AdminGroup
 from src.models.user_group import UserGroup
 from src.models.task import Task, TaskAssignment
+from src.models.collaboration_task import CollaborationTask, CollaborationTaskAssignment
+from src.models.collaboration_task_draft import CollaborationTaskDraft, CollaborationTaskSession
+from src.models.collaboration_task_summary import CollaborationTaskSummary, CollaborationTaskQualityCheck
+from src.models.notification import Notification, TaskStatusReminder
 from src.models.file import File
 from src.models.qa_pair import QAPair
 
@@ -22,6 +26,11 @@ from src.routes.user_management import user_management_bp
 from src.routes.group_management import group_management_bp
 from src.routes.file_management import file_management_bp
 from src.routes.task_management import task_management_bp
+from src.routes.collaboration_task import collaboration_task_bp
+from src.routes.collaboration_task_draft import collaboration_task_draft_bp
+from src.routes.collaboration_task_summary import collaboration_task_summary_bp
+from src.routes.collaboration_task_final import collaboration_task_final_bp
+from src.routes.notification import notification_bp
 
 def create_app(config_name='default'):
     """应用工厂函数"""
@@ -46,6 +55,11 @@ def create_app(config_name='default'):
     app.register_blueprint(group_management_bp, url_prefix='/api/v1')
     app.register_blueprint(file_management_bp, url_prefix='/api/v1')
     app.register_blueprint(task_management_bp, url_prefix='/api/v1')
+    app.register_blueprint(collaboration_task_bp, url_prefix='/api/v1')
+    app.register_blueprint(collaboration_task_draft_bp, url_prefix='/api/v1')
+    app.register_blueprint(collaboration_task_summary_bp, url_prefix='/api/v1')
+    app.register_blueprint(collaboration_task_final_bp, url_prefix='/api/v1')
+    app.register_blueprint(notification_bp, url_prefix='/api/v1')
     
     # 注册新的数据库初始化命令
     app.cli.add_command(init_db_command)
