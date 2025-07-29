@@ -392,5 +392,5 @@ Please refer to the `CHANGELOG.md` file.
 
 ## 📄 License
 
-[Fill in license information here, e.g., MIT License]
+This project is licensed under the terms of the [MIT License](LICENSE).
 

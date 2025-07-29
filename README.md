@@ -392,5 +392,5 @@ qa-proofreading-platform/
 
 ## 📄 许可证
 
-[在此处填写许可证信息，例如 MIT License]
+本项目采用 [MIT License](LICENSE) 许可证开源。
 
