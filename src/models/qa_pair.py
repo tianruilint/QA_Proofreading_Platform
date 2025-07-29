@@ -21,6 +21,8 @@ class QAPair(BaseModel):
     
     # 关系定义
     editor = db.relationship('User', foreign_keys=[edited_by], backref='edited_qa_pairs')
+    drafts = db.relationship('CollaborationTaskDraft', back_populates='qa_pair', cascade="all, delete-orphan")
+
     
     @classmethod
     def create_from_jsonl_data(cls, file_id, qa_pairs_data):

@@ -25,7 +25,6 @@ def save_draft(current_user, task_id):
                 error={'code': 'MISSING_PARAMETER', 'message': 'qa_pair_id是必需的'}
             )), 400
         
-        # 验证用户权限
         assignment = CollaborationTaskAssignment.query.filter_by(
             task_id=task_id,
             assigned_to=current_user.id
@@ -37,15 +36,17 @@ def save_draft(current_user, task_id):
                 error={'code': 'FORBIDDEN', 'message': '权限不足'}
             )), 403
         
-        # 验证QA对是否在用户的分配范围内
         qa_pair = QAPair.query.get_or_404(qa_pair_id)
-        if not (assignment.start_index <= qa_pair.index <= assignment.end_index):
+        
+        # ***** FIX STARTS HERE *****
+        # The attribute name is 'index_in_file', not 'index'.
+        if not (assignment.start_index <= qa_pair.index_in_file <= assignment.end_index):
+        # ***** FIX ENDS HERE *****
             return jsonify(create_response(
                 success=False,
                 error={'code': 'FORBIDDEN', 'message': 'QA对不在您的分配范围内'}
             )), 403
         
-        # 保存草稿
         draft = CollaborationTaskDraft.save_draft(
             task_id=task_id,
             user_id=current_user.id,
@@ -55,7 +56,6 @@ def save_draft(current_user, task_id):
             is_auto_saved=is_auto_saved
         )
         
-        # 更新用户活动
         CollaborationTaskSession.update_activity(task_id, current_user.id)
         
         return jsonify(create_response(
@@ -71,12 +71,12 @@ def save_draft(current_user, task_id):
             error={'code': 'INTERNAL_ERROR', 'message': f'保存草稿失败: {str(e)}'}
         )), 500
 
+# ... (rest of the file remains unchanged) ...
 @collaboration_task_draft_bp.route('/collaboration-tasks/<int:task_id>/drafts', methods=['GET'])
 @login_required
 def get_drafts(current_user, task_id):
     """获取用户的草稿列表"""
     try:
-        # 验证用户权限
         assignment = CollaborationTaskAssignment.query.filter_by(
             task_id=task_id,
             assigned_to=current_user.id
@@ -88,7 +88,6 @@ def get_drafts(current_user, task_id):
                 error={'code': 'FORBIDDEN', 'message': '权限不足'}
             )), 403
         
-        # 获取草稿列表
         drafts = CollaborationTaskDraft.get_user_drafts(task_id, current_user.id)
         
         return jsonify(create_response(
@@ -110,7 +109,6 @@ def get_drafts(current_user, task_id):
 def get_draft(current_user, task_id, qa_pair_id):
     """获取特定QA对的草稿"""
     try:
-        # 验证用户权限
         assignment = CollaborationTaskAssignment.query.filter_by(
             task_id=task_id,
             assigned_to=current_user.id
@@ -122,7 +120,6 @@ def get_draft(current_user, task_id, qa_pair_id):
                 error={'code': 'FORBIDDEN', 'message': '权限不足'}
             )), 403
         
-        # 获取草稿
         draft = CollaborationTaskDraft.get_draft(task_id, current_user.id, qa_pair_id)
         
         if draft:
@@ -148,7 +145,6 @@ def get_draft(current_user, task_id, qa_pair_id):
 def clear_draft(current_user, task_id, qa_pair_id):
     """清除草稿"""
     try:
-        # 验证用户权限
         assignment = CollaborationTaskAssignment.query.filter_by(
             task_id=task_id,
             assigned_to=current_user.id
@@ -160,7 +156,6 @@ def clear_draft(current_user, task_id, qa_pair_id):
                 error={'code': 'FORBIDDEN', 'message': '权限不足'}
             )), 403
         
-        # 清除草稿
         CollaborationTaskDraft.clear_draft(task_id, current_user.id, qa_pair_id)
         
         return jsonify(create_response(
@@ -180,7 +175,6 @@ def clear_draft(current_user, task_id, qa_pair_id):
 def start_session(current_user, task_id):
     """开始工作会话"""
     try:
-        # 验证用户权限
         assignment = CollaborationTaskAssignment.query.filter_by(
             task_id=task_id,
             assigned_to=current_user.id
@@ -192,7 +186,6 @@ def start_session(current_user, task_id):
                 error={'code': 'FORBIDDEN', 'message': '权限不足'}
             )), 403
         
-        # 开始会话
         session = CollaborationTaskSession.start_session(task_id, current_user.id)
         
         return jsonify(create_response(
@@ -213,7 +206,6 @@ def start_session(current_user, task_id):
 def update_session_activity(current_user, task_id):
     """更新会话活动"""
     try:
-        # 验证用户权限
         assignment = CollaborationTaskAssignment.query.filter_by(
             task_id=task_id,
             assigned_to=current_user.id
@@ -225,7 +217,6 @@ def update_session_activity(current_user, task_id):
                 error={'code': 'FORBIDDEN', 'message': '权限不足'}
             )), 403
         
-        # 更新活动
         session = CollaborationTaskSession.update_activity(task_id, current_user.id)
         
         if session:
@@ -251,7 +242,6 @@ def update_session_activity(current_user, task_id):
 def end_session(current_user, task_id):
     """结束工作会话"""
     try:
-        # 验证用户权限
         assignment = CollaborationTaskAssignment.query.filter_by(
             task_id=task_id,
             assigned_to=current_user.id
@@ -263,7 +253,6 @@ def end_session(current_user, task_id):
                 error={'code': 'FORBIDDEN', 'message': '权限不足'}
             )), 403
         
-        # 结束会话
         session = CollaborationTaskSession.end_session(task_id, current_user.id)
         
         if session:
@@ -290,7 +279,6 @@ def end_session(current_user, task_id):
 def get_current_session(current_user, task_id):
     """获取当前活跃会话"""
     try:
-        # 验证用户权限
         assignment = CollaborationTaskAssignment.query.filter_by(
             task_id=task_id,
             assigned_to=current_user.id
@@ -302,7 +290,6 @@ def get_current_session(current_user, task_id):
                 error={'code': 'FORBIDDEN', 'message': '权限不足'}
             )), 403
         
-        # 获取活跃会话
         session = CollaborationTaskSession.get_active_session(task_id, current_user.id)
         
         if session:
@@ -328,7 +315,6 @@ def get_current_session(current_user, task_id):
 def check_idle_status(current_user, task_id):
     """检查用户空闲状态"""
     try:
-        # 验证用户权限
         assignment = CollaborationTaskAssignment.query.filter_by(
             task_id=task_id,
             assigned_to=current_user.id
@@ -340,7 +326,6 @@ def check_idle_status(current_user, task_id):
                 error={'code': 'FORBIDDEN', 'message': '权限不足'}
             )), 403
         
-        # 获取活跃会话
         session = CollaborationTaskSession.get_active_session(task_id, current_user.id)
         
         if session:

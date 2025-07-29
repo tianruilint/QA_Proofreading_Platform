@@ -19,11 +19,9 @@ class ApiClient {
     if (contentType) {
       headers["Content-Type"] = contentType;
     }
-    
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
     }
-    
     return headers;
   }
 
@@ -40,7 +38,19 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      
+      const disposition = response.headers.get("content-disposition");
+      if (disposition && disposition.includes('attachment')) {
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: { message: '文件下载失败' }}));
+            throw new Error(errorData.error?.message || `文件下载失败: ${response.statusText}`);
+        }
+        return response.blob();
+      }
+
+      // 修复：如果响应体为空，返回一个成功的空对象，而不是尝试解析JSON
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : { success: true, data: {} };
 
       if (!response.ok) {
         throw new Error(data.error?.message || "请求失败");
@@ -53,419 +63,72 @@ class ApiClient {
     }
   }
 
-  // --- 认证相关 ---
-  async login(username, password) {
-    const response = await this.request("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    });
-    
-    if (response.success && response.data.access_token) {
-      this.setToken(response.data.access_token);
-    }
-    
-    return response;
-  }
-
-  async logout() {
-    try {
-      // await this.request("/auth/logout", { method: "POST" }); // 后端没有实现logout
-    } finally {
-      this.setToken(null);
-    }
-  }
-
-  async getCurrentUser() {
-    return this.request("/auth/me");
-  }
-
-  async changePassword(oldPassword, newPassword) {
-    return this.request("/auth/change-password", {
-      method: "POST",
-      body: JSON.stringify({
-        old_password: oldPassword,
-        new_password: newPassword,
-      }),
-    });
-  }
-
-  async getUsersTree() {
-    return this.request("/auth/users/tree");
-  }
+  // --- 认证 ---
+  async login(username, password) { const res = await this.request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }); if (res.success && res.data.access_token) { this.setToken(res.data.access_token); } return res; }
+  async logout() { this.setToken(null); }
+  async getCurrentUser() { return this.request("/auth/me"); }
+  async changePassword(oldPassword, newPassword) { return this.request("/auth/change-password", { method: "POST", body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }), }); }
+  async getUsersTree() { return this.request("/auth/users/tree"); }
   
   // --- 用户管理 ---
-  async getUsers(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/users${queryString ? `?${queryString}` : ""}`);
-  }
-
-  async createUser(userData) {
-    return this.request("/users", {
-      method: "POST",
-      body: JSON.stringify(userData),
-    });
-  }
-
-  async updateUser(userId, userData) {
-    return this.request(`/users/${userId}`, {
-      method: "PUT",
-      body: JSON.stringify(userData),
-    });
-  }
-
-  async deleteUser(userId) {
-    return this.request(`/users/${userId}`, { method: "DELETE" });
-  }
-
-  async resetUserPassword(userId, newPassword) {
-    return this.request(`/users/${userId}/reset-password`, {
-      method: "POST",
-      body: JSON.stringify({ new_password: newPassword }),
-    });
-  }
+  async getUsers(params = {}) { const q = new URLSearchParams(params).toString(); return this.request(`/users?${q}`); }
+  async createUser(userData) { return this.request("/users", { method: "POST", body: JSON.stringify(userData) }); }
+  async updateUser(userId, userData) { return this.request(`/users/${userId}`, { method: "PUT", body: JSON.stringify(userData) }); }
+  async deleteUser(userId) { return this.request(`/users/${userId}`, { method: "DELETE" }); }
+  async resetUserPassword(userId, newPassword) { return this.request(`/users/${userId}/reset-password`, { method: "POST", body: JSON.stringify({ new_password: newPassword }), }); }
   
   // --- 组管理 ---
-  async getAdminGroups(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/admin-groups${queryString ? `?${queryString}` : ""}`);
-  }
-
-  async createAdminGroup(groupData) {
-    return this.request("/admin-groups", {
-      method: "POST",
-      body: JSON.stringify(groupData),
-    });
-  }
-
-  async updateAdminGroup(groupId, groupData) {
-    return this.request(`/admin-groups/${groupId}`, {
-      method: "PUT",
-      body: JSON.stringify(groupData),
-    });
-  }
-
-  async deleteAdminGroup(groupId) {
-    return this.request(`/admin-groups/${groupId}`, { method: "DELETE" });
-  }
-
-  async getUserGroups(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/user-groups${queryString ? `?${queryString}` : ""}`);
-  }
-
-  async createUserGroup(groupData) {
-    return this.request("/user-groups", {
-      method: "POST",
-      body: JSON.stringify(groupData),
-    });
-  }
-
-  async updateUserGroup(groupId, groupData) {
-    return this.request(`/user-groups/${groupId}`, {
-      method: "PUT",
-      body: JSON.stringify(groupData),
-    });
-  }
-
-  async deleteUserGroup(groupId) {
-    return this.request(`/user-groups/${groupId}`, { method: "DELETE" });
-  }
-
-  async linkUserGroups(adminGroupId, data) {
-    return this.request(`/admin-groups/${adminGroupId}/user-groups`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  async getAdminGroups(params = {}) { const q = new URLSearchParams(params).toString(); return this.request(`/admin-groups?${q}`); }
+  async createAdminGroup(groupData) { return this.request("/admin-groups", { method: "POST", body: JSON.stringify(groupData) }); }
+  async updateAdminGroup(groupId, groupData) { return this.request(`/admin-groups/${groupId}`, { method: "PUT", body: JSON.stringify(groupData) }); }
+  async deleteAdminGroup(groupId) { return this.request(`/admin-groups/${groupId}`, { method: "DELETE" }); }
+  async getUserGroups(params = {}) { const q = new URLSearchParams(params).toString(); return this.request(`/user-groups?${q}`); }
+  async createUserGroup(groupData) { return this.request("/user-groups", { method: "POST", body: JSON.stringify(groupData) }); }
+  async updateUserGroup(groupId, groupData) { return this.request(`/user-groups/${groupId}`, { method: "PUT", body: JSON.stringify(groupData) }); }
+  async deleteUserGroup(groupId) { return this.request(`/user-groups/${groupId}`, { method: "DELETE" }); }
+  async linkUserGroups(adminGroupId, data) { return this.request(`/admin-groups/${adminGroupId}/user-groups`, { method: "POST", body: JSON.stringify(data) }); }
   
   // --- 文件和会话管理 ---
-  async getSessionHistory() {
-    return this.request('/files/history');
-  }
+  async getSessionHistory() { return this.request('/files/history'); }
+  async uploadFile(file) { const formData = new FormData(); formData.append("file", file); return this.request("/files/upload", { method: "POST", body: formData }); }
+  async getFile(fileId) { return this.request(`/files/${fileId}`); }
+  async renameFile(fileId, newName) { return this.request(`/files/${fileId}/rename`, { method: 'PUT', body: JSON.stringify({ new_name: newName }) }); }
+  async deleteFile(fileId) { return this.request(`/files/${fileId}`, { method: "DELETE" }); }
+  async getFileQAPairs(fileId) { return this.request(`/files/${fileId}/qa-pairs`); }
+  async updateQAPair(fileId, qaId, qaPairData) { return this.request(`/files/${fileId}/qa-pairs/${qaId}`, { method: "PUT", body: JSON.stringify(qaPairData) }); }
+  async deleteQAPair(fileId, qaId) { return this.request(`/files/${fileId}/qa-pairs/${qaId}`, { method: "DELETE" }); }
+  async exportFile(fileId, format = "jsonl") { const q = new URLSearchParams({ format }).toString(); return this.request(`/files/${fileId}/export?${q}`, { method: "GET" }); }
 
-  async uploadFile(file) {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await fetch(`${API_BASE_URL}/files/upload`, {
-      method: "POST",
-      headers: this.getHeaders(null),
-      body: formData,
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error?.message || "文件上传失败");
-    }
-
-    return data;
-  }
-
-  async getFile(fileId) {
-    return this.request(`/files/${fileId}`);
-  }
-
-  async renameFile(fileId, newName) {
-    return this.request(`/files/${fileId}/rename`, {
-        method: 'PUT',
-        body: JSON.stringify({ new_name: newName })
-    });
-  }
-
-  async deleteFile(fileId) {
-    return this.request(`/files/${fileId}`, { method: "DELETE" });
-  }
-
-  async getFileQAPairs(fileId, params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/files/${fileId}/qa-pairs${queryString ? `?${queryString}` : ""}`);
-  }
-
-  async updateQAPair(fileId, qaId, qaPairData) {
-    return this.request(`/files/${fileId}/qa-pairs/${qaId}`, {
-      method: "PUT",
-      body: JSON.stringify(qaPairData),
-    });
-  }
-
-  async deleteQAPair(fileId, qaId) {
-    return this.request(`/files/${fileId}/qa-pairs/${qaId}`, { method: "DELETE" });
-  }
-
-  async exportFile(fileId, exportType = "jsonl", startIndex = null, endIndex = null) {
-    const body = { type: exportType };
-    if (startIndex !== null) body.start_index = startIndex;
-    if (endIndex !== null) body.end_index = endIndex;
-
-    const headers = {};
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
-    }
-
-    const response = await fetch(`${API_BASE_URL}/files/${fileId}/export`, {
-      method: "POST",
-      headers: {
-        ...headers,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error?.message || "导出失败");
-    }
-
-    return response.blob();
-  }
-
-  // ... (其他任务管理等方法保持不变)
-
-  // 协作任务相关方法
-  async getCollaborationTasks(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/collaboration-tasks${queryString ? `?${queryString}` : ""}`);
-  }
-
-  async createCollaborationTask(formData) {
-    return this.request("/collaboration-tasks", {
-      method: "POST",
-      body: formData,
-      headers: {}
-    });
-  }
-
-  async getCollaborationTask(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}`);
-  }
-
-  async assignCollaborationTask(taskId, assignmentData) {
-    return this.request(`/collaboration-tasks/${taskId}/assign`, {
-      method: "POST",
-      body: JSON.stringify(assignmentData),
-    });
-  }
-
-  async getManageableUsersForTask(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/manageable-users`);
-  }
-
-  async submitCollaborationTaskAssignment(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/submit`, {
-      method: "POST",
-    });
-  }
-
-  async getCollaborationTaskQAPairs(taskId, params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/collaboration-tasks/${taskId}/qa-pairs${queryString ? `?${queryString}` : ""}`);
-  }
-
-  async exportCollaborationTask(taskId, exportType = "jsonl") {
-    const headers = {};
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
-    }
-
-    const response = await fetch(`${API_BASE_URL}/collaboration-tasks/${taskId}/export`, {
-      method: "POST",
-      headers: {
-        ...headers,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ type: exportType }),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error?.message || "导出失败");
-    }
-
-    return response.blob();
-  }
-
-  async deleteCollaborationTask(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}`, { method: "DELETE" });
-  }
-
-  // 通知相关方法
-  async getNotifications(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/notifications${queryString ? `?${queryString}` : ""}`);
-  }
-
-  async markNotificationAsRead(notificationId) {
-    return this.request(`/notifications/${notificationId}/read`, {
-      method: "PUT",
-    });
-  }
-
-  async markAllNotificationsAsRead() {
-    return this.request("/notifications/mark-all-read", {
-      method: "PUT",
-    });
-  }
-
-  async getUnreadNotificationCount() {
-    return this.request("/notifications/unread-count");
-  }
-
-  async getTaskStatusNotifications() {
-    return this.request("/notifications/task-status");
-  }
-
-  // 协作任务草稿相关方法
+  // --- 协作任务 ---
+  async getCollaborationTasks(params = {}) { const q = new URLSearchParams(params).toString(); return this.request(`/collaboration-tasks?${q}`); }
+  async createCollaborationTask(formData) { return this.request("/collaboration-tasks", { method: "POST", body: formData }); }
+  async getCollaborationTask(taskId) { return this.request(`/collaboration-tasks/${taskId}`); }
+  async getManageableUsersForTask(taskId) { return this.request(`/collaboration-tasks/${taskId}/manageable-users`); }
+  async assignCollaborationTask(taskId, assignmentData) { return this.request(`/collaboration-tasks/${taskId}/assign`, { method: "POST", body: JSON.stringify(assignmentData) }); }
+  async submitCollaborationTaskAssignment(taskId) { return this.request(`/collaboration-tasks/${taskId}/submit`, { method: "POST" }); }
+  async getCollaborationTaskEditorData(taskId, params = {}) { 
+  const q = new URLSearchParams(params).toString();
+  return this.request(`/collaboration-tasks/${taskId}/editor-data?${q}`);  }
+  async deleteCollaborationTask(taskId) { return this.request(`/collaboration-tasks/${taskId}`, { method: "DELETE" }); }
   async saveDraft(taskId, draftData) {
-    return this.request(`/collaboration-tasks/${taskId}/drafts`, {
-      method: "POST",
-      body: JSON.stringify(draftData),
-    });
-  }
+    return this.request(`/collaboration-tasks/${taskId}/draft`, { method: "POST", body: JSON.stringify(draftData) });
+}
+  async deleteCollaborationQAPair(taskId, qaPairId) {
+    return this.request(`/collaboration-tasks/${taskId}/qa-pairs/${qaPairId}`, { method: 'DELETE' });
+}
+  async exportCollaborationTask(taskId, format = 'jsonl') {
+    const q = new URLSearchParams({ format }).toString();
+    return this.request(`/collaboration-tasks/${taskId}/export?${q}`, { method: "GET" });
+}
+  async getCollaborationTaskSummaryData(taskId, params = {}) { const q = new URLSearchParams(params).toString(); return this.request(`/collaboration-tasks/${taskId}/summary-data?${q}`); }
+  async getCollaborationTaskProgress(taskId) { return this.request(`/collaboration-tasks/${taskId}/progress`); }
+  async updateSummaryItem(taskId, qaPairId, data) { return this.request(`/collaboration-tasks/${taskId}/summary/${qaPairId}`, { method: "PUT", body: JSON.stringify(data) }); }
 
-  async getDrafts(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/drafts`);
-  }
-
-  async getDraft(taskId, qaPairId) {
-    return this.request(`/collaboration-tasks/${taskId}/drafts/${qaPairId}`);
-  }
-
-  async clearDraft(taskId, qaPairId) {
-    return this.request(`/collaboration-tasks/${taskId}/drafts/${qaPairId}`, {
-      method: "DELETE",
-    });
-  }
-
-  // 协作任务会话相关方法
-  async startTaskSession(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/sessions`, {
-      method: "POST",
-    });
-  }
-
-  async updateSessionActivity(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/sessions`, {
-      method: "PUT",
-    });
-  }
-
-  async endTaskSession(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/sessions`, {
-      method: "DELETE",
-    });
-  }
-
-  async getCurrentSession(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/sessions/current`);
-  }
-
-  async checkIdleStatus(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/idle-check`);
-  }
-
-  // 协作任务汇总相关方法
-  async getCollaborationTaskSummary(taskId, params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    return this.request(`/collaboration-tasks/${taskId}/summary${queryString ? `?${queryString}` : ""}`);
-  }
-
-  async getCollaborationTaskProgress(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/progress`);
-  }
-
-  async getCollaborationTaskParticipants(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/participants`);
-  }
-
-  async updateSummaryItem(taskId, qaPairId, data) {
-    return this.request(`/collaboration-tasks/${taskId}/summary/${qaPairId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async createQualityCheck(taskId, data) {
-    return this.request(`/collaboration-tasks/${taskId}/quality-check`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async getQualitySummary(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/quality-summary`);
-  }
-
-  // 协作任务最终处理相关方法
-  async rejectAssignment(taskId, data) {
-    return this.request(`/collaboration-tasks/${taskId}/reject-assignment`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async finalConfirmTask(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/final-confirm`, {
-      method: "POST",
-    });
-  }
-
-  async exportFinalResult(taskId) {
-    return this.request(`/collaboration-tasks/${taskId}/export-final`);
-  }
-
-  async batchQualityCheck(taskId, data) {
-    return this.request(`/collaboration-tasks/${taskId}/batch-quality-check`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async reopenTask(taskId, data) {
-    return this.request(`/collaboration-tasks/${taskId}/reopen`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+  // --- 通知功能 (已恢复) ---
+  async getNotifications(params = {}) { const q = new URLSearchParams(params).toString(); return this.request(`/notifications?${q}`); }
+  async markNotificationAsRead(notificationId) { return this.request(`/notifications/${notificationId}/read`, { method: "PUT" }); }
+  async markAllNotificationsAsRead() { return this.request("/notifications/mark-all-read", { method: "PUT" }); }
+  async getUnreadNotificationCount() { return this.request("/notifications/unread-count"); }
 }
 
 export const apiClient = new ApiClient();

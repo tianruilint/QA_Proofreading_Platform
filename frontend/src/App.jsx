@@ -20,7 +20,7 @@ function GuestPage() {
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">QA对校对协作平台 - 访客模式</h1>
-            <a href="/" className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <a href="/" className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
               返回登录
             </a>
           </div>
@@ -37,9 +37,7 @@ function AppContent() {
   const { user, loading, isAuthenticated } = useAuth();
   
   const getDefaultPage = useCallback(() => {
-    if (user?.role === 'super_admin') {
-      return 'user-management';
-    }
+    if (user?.role === 'super_admin') return 'user-management';
     return 'single-file';
   }, [user]);
 
@@ -48,61 +46,43 @@ function AppContent() {
   const [currentSession, setCurrentSession] = useState(null);
 
   const fetchSessionHistory = useCallback(async () => {
-    if (user) {
-      try {
-        const response = await apiClient.getSessionHistory();
-        if (response.success) {
-          const formattedHistory = response.data.map(file => ({
-            id: file.id,
-            name: file.original_filename,
-            date: new Date(file.created_at).toLocaleString('zh-CN'),
-            fileId: file.id,
-            type: 'single-file'
-          }));
-          setSessionHistory(formattedHistory);
-        } else {
-          toast.error("加载会话历史失败");
-        }
-      } catch (error) {
-        toast.error(`加载会话历史失败: ${error.message}`);
+    if (!user) return;
+    try {
+      const response = await apiClient.getSessionHistory();
+      if (response.success) {
+        const formattedHistory = response.data.map(file => ({
+          ...file,
+          name: file.original_filename,
+          date: new Date(file.created_at).toLocaleString('zh-CN'),
+          fileId: file.id,
+        }));
+        setSessionHistory(formattedHistory);
+      } else {
+        toast.error("加载会话历史失败");
       }
+    } catch (error) {
+      toast.error(`加载会话历史失败: ${error.message}`);
     }
   }, [user]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchSessionHistory();
-    }
+    if (isAuthenticated) fetchSessionHistory();
   }, [isAuthenticated, fetchSessionHistory]);
   
   useEffect(() => {
-    if (user) {
-      setCurrentPage(getDefaultPage());
-    }
+    if (user) setCurrentPage(getDefaultPage());
   }, [user, getDefaultPage]);
 
-  const handleGuestMode = () => {
-    window.location.href = "/guest";
-  };
-
-  const handleSessionSave = async () => {
-    await fetchSessionHistory(); 
-  };
+  const handleSessionSave = () => fetchSessionHistory();
   
   const handleSessionSelect = (session) => {
-    // 确保我们总是传递一个新的对象引用，以触发useEffect
     setCurrentSession({ ...session });
     if (currentPage !== 'single-file') {
       setCurrentPage('single-file');
     }
   };
 
-  // 1. 新增一个函数，用于返回上传页面时清空当前会话
-  const handleBackToUpload = () => {
-    setCurrentSession(null);
-  };
-
-  // 2. 改造页面切换函数，切换页面时也清空当前会话
+  const handleBackToUpload = () => setCurrentSession(null);
   const handlePageChange = (page) => {
     if (currentPage !== page) {
       setCurrentSession(null);
@@ -112,46 +92,43 @@ function AppContent() {
 
   const handleRenameSession = async (fileId, newName) => {
     try {
-        const response = await apiClient.renameFile(fileId, newName);
-        if (response.success) {
-            toast.success("会话重命名成功");
-            setSessionHistory(prev => 
-                prev.map(session => 
-                    session.fileId === fileId ? { ...session, name: newName } : session
-                )
-            );
-            if (currentSession?.fileId === fileId) {
-                setCurrentSession(prev => ({ ...prev, name: newName }));
-            }
-        } else {
-            toast.error(`重命名失败: ${response.error.message}`);
+      const response = await apiClient.renameFile(fileId, newName);
+      if (response.success) {
+        toast.success("会话重命名成功");
+        await fetchSessionHistory();
+        if (currentSession?.fileId === fileId) {
+          setCurrentSession(prev => ({ ...prev, name: newName, original_filename: newName }));
         }
+      } else {
+        toast.error(`重命名失败: ${response.error.message}`);
+      }
     } catch (error) {
-        toast.error(`重命名失败: ${error.message}`);
+      toast.error(`重命名失败: ${error.message}`);
     }
   };
 
-  const handleDeleteSession = async (fileId) => {
+  // --- 关键修复：接收第二个参数 wasActive ---
+  const handleDeleteSession = async (fileId, wasActive) => {
     try {
-        const response = await apiClient.deleteFile(fileId);
-        if (response.success) {
-            toast.success("会话删除成功");
-            setSessionHistory(prev => prev.filter(session => session.fileId !== fileId));
-            if (currentSession?.fileId === fileId) {
-                setCurrentSession(null);
-            }
-        } else {
-            toast.error(`删除失败: ${response.error.message}`);
+      const response = await apiClient.deleteFile(fileId);
+      if (response.success) {
+        toast.success("会话删除成功");
+        setSessionHistory(prev => prev.filter(session => session.fileId !== fileId));
+        // 如果删除的是当前正在查看的会话，则清空视图
+        if (wasActive) {
+          setCurrentSession(null);
         }
+      } else {
+        toast.error(`删除失败: ${response.error.message}`);
+      }
     } catch (error) {
-        toast.error(`删除失败: ${error.message}`);
+      toast.error(`删除失败: ${error.message}`);
     }
   };
 
   const renderPage = () => {
     switch (currentPage) {
       case 'single-file':
-        // 3. 将新的清空函数传递给 SingleFileEditor
         return <SingleFileEditor onSessionSave={handleSessionSave} currentSession={currentSession} onBackToUpload={handleBackToUpload} />;
       case 'tasks':
         return <CollaborationTasks />;
@@ -169,10 +146,7 @@ function AppContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">加载中...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -184,17 +158,18 @@ function AppContent() {
         isAuthenticated ? (
           <MainLayout 
             currentPage={currentPage} 
-            // 4. 使用新的页面切换函数
             onPageChange={handlePageChange} 
             sessionHistory={sessionHistory}
             onSessionSelect={handleSessionSelect}
             onRenameSession={handleRenameSession}
             onDeleteSession={handleDeleteSession}
+            // --- 关键修复：传递当前会话ID ---
+            activeSessionId={currentSession?.fileId}
           >
             {renderPage()}
           </MainLayout>
         ) : (
-          <LoginPage onGuestMode={handleGuestMode} />
+          <LoginPage onGuestMode={() => window.location.href = "/guest"} />
         )
       } />
     </Routes>

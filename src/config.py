@@ -31,7 +31,7 @@ class Config:
     ALLOWED_EXTENSIONS = {"jsonl", "json"}
     
     # CORS配置
-    CORS_ORIGINS = ["*"]  # 开发环境允许所有来源，生产环境应该限制
+    CORS_ORIGINS = ["http://localhost:5173"]
     
     # 分页配置
     DEFAULT_PAGE_SIZE = 20

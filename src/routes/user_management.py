@@ -104,11 +104,10 @@ def create_user(current_user):
             )), 403
         
         # 检查用户名是否已存在
-        existing_user = User.get_by_username(username)
-        if existing_user:
+        if User.check_username_exists(username):
             return jsonify(create_response(
                 success=False,
-                error={'code': 'USERNAME_EXISTS', 'message': '用户名已存在'}
+                error={'code': 'USERNAME_EXISTS', 'message': '用户名已存在，即使该用户已被停用'}
             )), 400
         
         # 验证密码
@@ -269,21 +268,33 @@ def update_user(current_user, user_id):
         )), 500
 
 @user_management_bp.route('/users/<int:user_id>', methods=['DELETE'])
-@super_admin_required
+@admin_required
 def delete_user(current_user, user_id):
-    """删除用户（软删除）"""
+    """删除用户（软删除），支持管理员和超级管理员"""
     try:
-        user = User.get_or_404(user_id)
+        user_to_delete = User.get_or_404(user_id)
         
-        # 不能删除自己
-        if user.id == current_user.id:
+        if user_to_delete.id == current_user.id:
             return jsonify(create_response(
                 success=False,
                 error={'code': 'INVALID_OPERATION', 'message': '不能删除自己'}
             )), 400
-        
-        # 软删除
-        user.is_active = False
+            
+        can_delete = False
+        if current_user.is_super_admin():
+            can_delete = True
+        elif current_user.is_admin():
+            manageable_users = current_user.get_manageable_users()
+            if user_to_delete in manageable_users:
+                can_delete = True
+
+        if not can_delete:
+            return jsonify(create_response(
+                success=False,
+                error={'code': 'FORBIDDEN', 'message': '权限不足，无法删除该用户'}
+            )), 403
+            
+        user_to_delete.is_active = False
         db.session.commit()
         
         return jsonify(create_response(

@@ -20,7 +20,8 @@ class File(BaseModel):
     
     # 关系定义
     uploader = db.relationship('User', foreign_keys=[uploaded_by], backref='uploaded_files')
-    qa_pairs = db.relationship('QAPair', backref='file', lazy='dynamic')
+    qa_pairs = db.relationship('QAPair', backref='file', lazy='dynamic', cascade="all, delete-orphan")
+
     
     @classmethod
     def create_file(cls, filename, original_filename, file_path, file_size, file_type, uploaded_by):

@@ -5,6 +5,7 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from openpyxl import Workbook
 from flask import current_app
+import io
 
 def allowed_file(filename):
     """检查文件扩展名是否允许"""
@@ -74,49 +75,46 @@ def parse_jsonl_file(file_path):
     except Exception as e:
         return None, f"文件读取失败: {str(e)}"
 
-def export_to_jsonl(qa_pairs, output_path):
-    """导出QA对到JSONL文件"""
+def export_to_jsonl(qa_pairs):
+    """导出QA对到内存中的JSONL文件流"""
     try:
-        with open(output_path, 'w', encoding='utf-8') as f:
-            for qa_pair in qa_pairs:
-                json_line = json.dumps({
-                    'prompt': qa_pair['prompt'],
-                    'completion': qa_pair['completion']
-                }, ensure_ascii=False)
-                f.write(json_line + '\n')
+        jsonl_content = '\n'.join([json.dumps({
+            'prompt': qa_pair.prompt,
+            'completion': qa_pair.completion
+        }, ensure_ascii=False) for qa_pair in qa_pairs])
         
-        return True, None
+        mem_file = io.BytesIO(jsonl_content.encode('utf-8'))
+        mimetype = 'application/jsonl'
+        
+        return mem_file, mimetype
     except Exception as e:
-        return False, f"导出JSONL文件失败: {str(e)}"
+        raise IOError(f"导出JSONL文件流失败: {str(e)}")
 
-def export_to_excel(qa_pairs, output_path):
-    """导出QA对到Excel文件"""
+def export_to_excel(qa_pairs):
+    """导出QA对到内存中的Excel文件流"""
     try:
         wb = Workbook()
         ws = wb.active
         ws.title = "QA对"
         
-        # 设置表头
-        headers = ['序号', '问题(prompt)', '答案(completion)']
-        for col, header in enumerate(headers, 1):
-            ws.cell(row=1, column=col, value=header)
+        ws.append(['序号', '问题(prompt)', '答案(completion)'])
         
-        # 写入数据
-        for row, qa_pair in enumerate(qa_pairs, 2):
-            ws.cell(row=row, column=1, value=row - 1)  # 序号
-            ws.cell(row=row, column=2, value=qa_pair['prompt'])
-            ws.cell(row=row, column=3, value=qa_pair['completion'])
+        for index, qa_pair in enumerate(qa_pairs, 1):
+            ws.append([index, qa_pair.prompt, qa_pair.completion])
         
-        # 调整列宽
         ws.column_dimensions['A'].width = 8
         ws.column_dimensions['B'].width = 50
         ws.column_dimensions['C'].width = 50
         
-        wb.save(output_path)
-        return True, None
-    
+        mem_file = io.BytesIO()
+        wb.save(mem_file)
+        mem_file.seek(0) # Move the cursor to the beginning of the memory file
+        mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        
+        return mem_file, mimetype
     except Exception as e:
-        return False, f"导出Excel文件失败: {str(e)}"
+        raise IOError(f"导出Excel文件流失败: {str(e)}")
+
 
 def create_export_filename(original_filename, export_type='jsonl', suffix='edited'):
     """创建导出文件名"""

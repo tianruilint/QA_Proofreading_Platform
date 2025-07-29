@@ -5,18 +5,21 @@ class CollaborationTaskDraft(BaseModel):
     """协作任务草稿模型 - 用于暂存用户的编辑进度"""
     __tablename__ = 'collaboration_task_drafts'
     
-    task_id = db.Column(db.Integer, db.ForeignKey('collaboration_tasks.id'), nullable=False)
+    # BUG修复: 添加 ondelete='CASCADE' 确保数据库级别的级联删除
+    task_id = db.Column(db.Integer, db.ForeignKey('collaboration_tasks.id', ondelete='CASCADE'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     qa_pair_id = db.Column(db.Integer, db.ForeignKey('qa_pairs.id'), nullable=False)
     draft_prompt = db.Column(db.Text, nullable=True)
     draft_completion = db.Column(db.Text, nullable=True)
     is_auto_saved = db.Column(db.Boolean, nullable=False, default=False)
     last_saved_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False)
     
     # 关系定义
-    task = db.relationship('CollaborationTask', backref='drafts')
+    # BUG修复: 使用 back_populates 替代 backref
+    task = db.relationship('CollaborationTask', back_populates='drafts')
     user = db.relationship('User', backref='collaboration_drafts')
-    qa_pair = db.relationship('QAPair', backref='drafts')
+    qa_pair = db.relationship('QAPair', back_populates='drafts')
     
     # 唯一约束：每个用户对每个QA对只能有一个草稿
     __table_args__ = (
@@ -24,7 +27,7 @@ class CollaborationTaskDraft(BaseModel):
     )
     
     @classmethod
-    def save_draft(cls, task_id, user_id, qa_pair_id, prompt=None, completion=None, is_auto_saved=False):
+    def save_draft(cls, task_id, user_id, qa_pair_id, prompt=None, completion=None, is_auto_saved=False, is_deleted=False):
         """保存或更新草稿"""
         draft = cls.query.filter_by(
             task_id=task_id,
@@ -38,6 +41,8 @@ class CollaborationTaskDraft(BaseModel):
                 draft.draft_prompt = prompt
             if completion is not None:
                 draft.draft_completion = completion
+            
+            draft.is_deleted = is_deleted
             draft.is_auto_saved = is_auto_saved
             draft.last_saved_at = datetime.utcnow()
         else:
@@ -49,7 +54,8 @@ class CollaborationTaskDraft(BaseModel):
                 draft_prompt=prompt,
                 draft_completion=completion,
                 is_auto_saved=is_auto_saved,
-                last_saved_at=datetime.utcnow()
+                last_saved_at=datetime.utcnow(),
+                is_deleted=is_deleted
             )
             db.session.add(draft)
         

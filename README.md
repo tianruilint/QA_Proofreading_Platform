@@ -1,216 +1,392 @@
-# QA对校对协作平台
+# QA对校对协作平台 V2
 
-一个基于Web的文本校对系统，支持访客模式和用户登录模式，具备JSONL文件上传、编辑、保存、导出等功能。
+[English](README_en.md) | 中文
 
-## 🚀 快速开始
+## 📖 项目简介
 
-### 环境要求
-- Python 3.11+
-- Node.js 20+
-- 现代浏览器
-
-### 安装和运行
-
-1. **安装后端依赖**
-```bash
-pip3 install -r requirements.txt
-```
-
-2. **初始化数据库**
-```bash
-python3 init_sqlite_db.py
-```
-
-3. **启动后端服务**
-```bash
-python3 src/main.py
-```
-
-4. **安装前端依赖**
-```bash
-cd frontend
-npm install --legacy-peer-deps
-```
-
-5. **启动前端服务**
-```bash
-npm run dev
-```
-
-6. **访问应用**
-打开浏览器访问：http://localhost:5173
+QA对校对协作平台是一个用于高效管理和协作校对QA（Question-Answer）对的Web应用程序。它旨在帮助团队成员对大量的QA数据进行审阅、编辑、标记和导出，支持单文件校对和多用户协作任务。
 
 ## ✨ 主要功能
 
-### 访客模式
-- 🔓 无需登录即可使用
-- 📁 JSONL文件上传和解析
-- ✏️ QA对在线编辑
-- 📄 分页显示（每页5个QA对）
-- 💾 JSONL和Excel格式导出
-- 🎯 页面高度固定，无垂直滚动
+### 🔐 用户认证与管理
+- **用户登录**: 支持通过预设用户列表进行登录，区分管理员和普通用户
+- **会话管理**: 用户登录后获取会话Token，用于后续API请求认证
+- **权限控制**: 根据用户角色（超级管理员、管理员、普通用户）和任务分配，提供不同的操作权限
 
-### 登录模式
-- 👤 用户身份验证
-- 📊 左侧导航和右侧工作台并列布局
-- 📝 会话历史记录管理
-- 🗑️ 会话删除功能
-- ⏰ 编辑时间记录（北京时间）
-- 👥 多用户协作支持
+### 📄 单文件校对
+- **文件上传**: 支持上传JSONL格式的QA对文件进行校对
+- **QA对列表展示**: 分页展示QA对，支持关键词搜索
+- **QA对编辑**: 可对单个QA对的Prompt和Completion进行修改，并支持标记为删除
+- **数据导出**: 支持将校对后的QA对导出为JSONL或Excel格式
 
-## 🎯 核心特性
+### 👥 协作任务管理
+- **任务创建**: 管理员可上传JSONL文件，创建协作校对任务，并分配给多个用户
+- **任务分配**: 支持将QA对按数量分配给不同的团队成员
+- **任务进度追踪**: 查看任务整体进度和每个成员的完成情况
+- **协作编辑**: 团队成员可编辑分配给自己的QA对
+- **任务提交**: 成员完成分配的QA对后可提交任务部分
+- **合并与导出**: 任务创建者可合并所有已提交的任务部分，并导出为JSONL或Excel格式
 
-### 界面设计
-- **响应式布局**：适配不同屏幕尺寸
-- **固定高度**：页面保持在标准浏览器大小内
-- **左右分栏**：登录模式下左侧导航，右侧工作台
-- **翻页模式**：避免长页面滚动，提升用户体验
+### 📋 任务列表
+- **待办任务**: 展示当前用户待处理的单文件校对任务和协作任务
+- **已完成任务**: 展示当前用户已完成的任务，并提供下载已导出文件的链接
 
-### 文件处理
-- **JSONL格式支持**：标准的JSON Lines格式
-- **实时编辑**：所见即所得的编辑体验
-- **多格式导出**：支持JSONL和Excel格式
-- **数据持久化**：登录用户数据保存到数据库
+### ⚙️ 系统管理 (预留)
+- **用户组管理**: 管理员可创建、编辑和删除用户组
+- **管理员组管理**: 管理员可创建、编辑和删除管理员组
+- **数据追溯**: 查看QA对的编辑历史和操作记录
 
-### 用户体验
-- **即时反馈**：编辑状态实时显示
-- **操作提示**：清晰的用户操作指引
-- **错误处理**：友好的错误提示和处理
-- **性能优化**：快速响应和流畅交互
-
-## 📁 项目结构
-
-```
-qa-proofreading-platform-optimized/
-├── src/                          # 后端源码
-│   ├── main.py                  # Flask应用入口
-│   ├── routes/                  # API路由
-│   │   ├── auth.py             # 用户认证
-│   │   └── file_management.py  # 文件管理
-│   ├── models/                  # 数据模型
-│   │   ├── user.py             # 用户模型
-│   │   └── single_file.py      # 文件会话模型
-│   └── utils/                   # 工具函数
-│       └── file_handler.py     # 文件处理工具
-├── frontend/                     # 前端源码
-│   ├── src/                     # React源码
-│   │   ├── components/          # React组件
-│   │   │   ├── LoginPage.jsx   # 登录页面
-│   │   │   ├── MainLayout.jsx  # 主布局
-│   │   │   └── SingleFileEditor.jsx # 文件编辑器
-│   │   ├── lib/                # 工具库
-│   │   │   └── api.js          # API接口
-│   │   └── App.jsx             # 应用入口
-│   ├── package.json            # 前端依赖
-│   └── vite.config.js          # Vite配置
-├── requirements.txt             # 后端依赖
-├── init_sqlite_db.py           # 数据库初始化
-├── 修复优化报告.md              # 详细修复报告
-├── 部署测试指南.md              # 部署和测试指南
-└── README.md                   # 项目说明
-```
-
-## 🔧 技术栈
-
-### 后端
-- **Flask**：Python Web框架
-- **SQLAlchemy**：ORM数据库操作
-- **SQLite**：轻量级数据库
-- **openpyxl**：Excel文件处理
+## 🛠️ 技术栈
 
 ### 前端
-- **React**：用户界面库
-- **Vite**：构建工具
-- **Tailwind CSS**：样式框架
-- **Lucide React**：图标库
+- **框架**: React.js
+- **UI组件**: Ant Design (根据 package.json 推断，实际代码中使用了 lucide-react 和 tailwind-merge，可能结合了Tailwind CSS)
+- **构建工具**: Vite
+- **路由**: React Router DOM
+- **样式**: Tailwind CSS, PostCSS
 
-## 📋 使用说明
+### 后端
+- **框架**: Flask
+- **数据库**: SQLAlchemy (ORM), SQLite (开发环境默认，可配置为PostgreSQL)
+- **API**: RESTful API
+- **认证**: JWT (PyJWT)
+- **缓存**: Redis (预留，根据 requirements.txt 推断)
+- **文件处理**: openpyxl (Excel)
+- **其他**: Flask-CORS, Werkzeug, python-dotenv, bcrypt
 
-### 访客模式使用流程
+## 🏗️ 系统架构
 
-1. **进入访客模式**
-   - 点击登录页面的"跳过登录（访客模式）"按钮
+系统采用前后端分离的架构，通过RESTful API进行通信。核心组件包括：
 
-2. **上传JSONL文件**
-   - 点击"选择文件"按钮
-   - 选择符合格式的JSONL文件
-   - 系统自动解析并显示QA对
+- **用户层**: 管理员用户、普通用户、访客用户
+- **前端层**: 基于React的Web应用，提供用户界面和交互逻辑
+- **网络层**: Nginx反向代理（可选），HTTPS/SSL加密
+- **后端层**: 基于Flask的API服务，处理业务逻辑、数据存储和文件操作
+- **数据层**: PostgreSQL数据库（或SQLite），Redis缓存，本地文件系统用于文件存储
+- **外部服务**: 定时清理任务、数据备份服务（预留）
 
-3. **编辑QA对**
-   - 点击任意QA对的"编辑"按钮
-   - 修改问题或答案内容
-   - 点击"保存"确认修改
+## 🚀 部署指南
 
-4. **分页浏览**
-   - 使用页面底部的分页控件
-   - 每页显示5个QA对
-   - 支持快速跳转到指定页面
+### 概述
 
-5. **导出文件**
-   - 点击"导出JSONL"下载原格式文件
-   - 点击"导出Excel"下载表格文件
+本文档旨在为QA对校对协作平台的部署和测试提供详细的指导。本平台采用前后端分离架构，前端基于React，后端基于Flask。本指南将涵盖开发环境的搭建、依赖安装、数据库初始化以及服务的启动步骤。
 
-### JSONL文件格式
+> **重要提示**: 本指南假设您在一个基于Linux (Ubuntu) 的环境中进行部署。所有命令均在终端中执行。请确保您的系统满足所有先决条件。
 
-每行一个JSON对象，包含question和answer字段：
+### 环境准备
 
-```jsonl
-{"question": "什么是人工智能？", "answer": "人工智能是计算机科学的一个分支..."}
-{"question": "什么是机器学习？", "answer": "机器学习是人工智能的一个子集..."}
+在开始部署之前，请确保您的系统已安装以下软件和工具：
+
+#### 操作系统
+- Ubuntu 20.04 LTS 或更高版本 (推荐)
+
+#### 核心依赖
+
+**Git**: 用于克隆项目代码
+```bash
+sudo apt update
+sudo apt install git -y
 ```
 
-## 🐛 问题排查
+**Python 3.9 或更高版本**: 后端服务运行环境
+```bash
+sudo apt install python3.9 python3.9-venv python3-pip -y
+# 确保pip指向python3.9
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
+sudo update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+```
 
-### 常见问题
+**Node.js 18.x 或更高版本**: 前端构建和运行环境
+```bash
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+# 验证安装
+node -v
+npm -v
+```
 
-1. **访客模式按钮无响应**
-   - 检查浏览器控制台错误
-   - 确认前后端服务都已启动
+**npm 或 Yarn**: 前端包管理器
+```bash
+sudo npm install -g yarn # 如果选择使用yarn
+```
 
-2. **文件上传失败**
-   - 检查文件格式是否为JSONL
-   - 确认文件内容符合JSON格式
-   - 检查文件大小不超过10MB
+### 项目部署
 
-3. **页面布局异常**
-   - 刷新浏览器页面
-   - 尝试使用不同浏览器
-   - 检查浏览器缩放比例
+#### 1. 获取项目代码
 
-4. **导出功能无响应**
-   - 检查浏览器下载设置
-   - 确认后端服务正常运行
-   - 查看浏览器控制台错误
+首先，您需要从版本控制系统（例如Git仓库）克隆项目代码到本地。如果您已经通过压缩包获取了项目，请将其解压到您希望部署的目录。
 
-### 调试信息
+```bash
+# 如果是Git仓库，请替换为您的实际仓库地址
+git clone <您的项目Git仓库地址>
+cd qa-proofreading-platform
+```
 
-- **后端日志**：在运行后端服务的终端查看
-- **前端日志**：打开浏览器开发者工具Console
-- **数据库**：SQLite文件位于项目根目录
+> 如果您是通过压缩包获取的项目，请确保您已将其解压，并且当前终端的工作目录位于解压后的 `qa-proofreading-platform` 目录下。本指南后续的所有路径都将基于此根目录。
 
-## 📝 更新日志
+#### 2. 后端服务部署
 
-### v1.0.0 (2025-07-13)
-- ✅ 修复访客模式按钮无法点击问题
-- ✅ 优化登录用户界面布局为左右并列
-- ✅ 实现工作台翻页模式，每页显示5个QA对
-- ✅ 确保页面高度固定在标准浏览器大小内
-- ✅ 优化文件导出功能，Excel直接导出单个文件
-- ✅ 完善用户体验和界面设计
-- ✅ 添加详细的部署和测试文档
+后端服务使用Python Flask框架。以下是部署步骤：
+
+**创建并激活Python虚拟环境**
+
+为了隔离项目依赖，强烈建议使用虚拟环境。
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+> **注意**: 在Windows系统上，激活命令可能是 `.\venv\Scripts\activate`。
+
+**安装后端依赖**
+
+激活虚拟环境后，安装 `requirements.txt` 中列出的所有Python包。
+
+```bash
+pip install -r requirements.txt
+```
+
+**数据库初始化**
+
+平台默认使用SQLite数据库进行开发和测试，数据库文件将生成在 `instance/` 目录下。您需要运行初始化脚本来创建数据库表结构并填充初始数据。
+
+```bash
+python init_sqlite_db.py
+```
+
+运行此脚本后，您将看到类似以下输出，其中包含默认的登录凭据：
+
+```
+正在删除旧的数据库表...
+旧表已删除。
+正在创建新的数据库表...
+新表已成功创建。
+正在填充初始数据...
+数据库初始化数据填充完成。
+-----------------------------------------
+初始用户凭据:
+  - 超级管理员: superadmin / password
+  - 管理员: adminuser / password
+  - 普通用户: user1 / password, user2 / password
+-----------------------------------------
+```
+
+> **注意**: 如果您需要使用PostgreSQL等生产级数据库，请修改 `src/config.py` 中的数据库配置，并确保已安装相应的数据库驱动（例如 `psycopg2-binary`）。本指南不详细展开PostgreSQL的配置。
+
+**启动后端服务**
+
+在激活的虚拟环境中，运行Flask应用。
+
+```bash
+python src/main.py
+```
+
+后端服务将默认运行在 `http://localhost:5001`。您应该会看到Flask的启动信息。
+
+> **提示**: 如果您希望后端服务在后台持续运行，可以使用 `nohup` 或 `screen/tmux` 等工具，或者在生产环境中使用Gunicorn等WSGI服务器。
+
+#### 3. 前端服务部署
+
+前端服务使用React和Vite构建。以下是部署步骤：
+
+**进入前端项目目录**
+
+根据项目结构，前端代码可能位于项目根目录或 `frontend/` 子目录中。根据您提供的压缩包内容，前端文件直接位于项目根目录。
+
+```bash
+# 如果您当前不在项目根目录，请先回到根目录
+# cd /path/to/qa-proofreading-platform
+```
+
+**安装前端依赖**
+
+使用npm或yarn安装前端项目所需的JavaScript依赖。
+
+```bash
+npm install
+# 或者
+# yarn install
+```
+
+**启动前端开发服务器**
+
+使用Vite启动前端开发服务器。这将编译前端代码并在本地提供服务。
+
+```bash
+npm run dev
+# 或者
+# yarn dev
+```
+
+前端开发服务器将默认运行在 `http://localhost:5173`。Vite会自动打开浏览器并访问此地址。
+
+#### 4. 访问平台
+
+当后端和前端服务都成功启动后，您可以通过浏览器访问前端地址来使用平台：
+
+**平台访问地址**: `http://localhost:5173`
+
+您可以使用数据库初始化时提供的默认用户凭据进行登录和测试。
+
+### 生产环境部署建议 (可选)
+
+对于生产环境部署，建议采取以下措施以提高性能、稳定性和安全性：
+
+**使用Gunicorn作为WSGI服务器**: 替代Flask自带的开发服务器。
+
+```bash
+pip install gunicorn
+gunicorn -w 4 -b 0.0.0.0:5001 src.main:app
+```
+
+**使用Nginx作为反向代理**: 处理静态文件、负载均衡和HTTPS。
+- 配置Nginx将所有 `/api/v1` 请求转发到后端Gunicorn服务
+- 配置Nginx提供前端构建后的静态文件
+- 配置SSL证书以启用HTTPS
+
+**前端生产构建**: 运行 `npm run build` (或 `yarn build`) 命令生成优化后的静态文件，然后通过Nginx或类似的Web服务器提供这些文件。
+
+```bash
+npm run build
+```
+
+构建后的文件通常位于 `dist/` 目录下。
+
+**数据库**: 将SQLite替换为PostgreSQL等更强大的关系型数据库。
+
+**日志管理**: 配置后端日志输出到文件或日志服务，便于监控和故障排查。
+
+**环境变量**: 使用更安全的机制管理敏感配置（如数据库连接字符串、密钥），而不是直接硬编码。
+
+### 常见问题与故障排除
+
+- **端口占用**: 如果前端或后端服务启动失败，提示端口已被占用，您可以尝试修改 `vite.config.js` (前端) 或 `src/main.py` (后端) 中的端口号，或者查找并终止占用端口的进程。
+
+- **依赖安装失败**: 检查您的网络连接，或者尝试更换npm/pip的镜像源。
+
+- **数据库连接错误**: 确保数据库服务正在运行，并且连接字符串配置正确。
+
+- **前端白屏**: 检查浏览器控制台是否有JavaScript错误，确保后端服务已启动且API请求正常。
+
+- **权限问题**: 确保您的用户对项目目录有读写权限，尤其是在安装依赖和创建文件时。
+
+## 📚 API接口文档
+
+详细的API接口规范请参考 `api_specification.md` 文件。
+
+## 🤝 贡献与开发
+
+### 开发环境搭建
+
+**克隆仓库**
+```bash
+git clone <仓库地址>
+cd qa-proofreading-platform
+```
+
+**后端环境搭建**
+
+创建并激活Python虚拟环境：
+```bash
+python3 -m venv venv
+source venv/bin/activate  # Linux/macOS
+# venv\Scripts\activate   # Windows
+```
+
+安装后端依赖：
+```bash
+pip install -r requirements.txt
+```
+
+初始化数据库：
+```bash
+python init_sqlite_db.py
+```
+
+运行后端服务：
+```bash
+python src/main.py
+```
+
+后端服务默认运行在 `http://localhost:5001`。
+
+**前端环境搭建**
+
+进入前端目录：
+```bash
+cd frontend  # 如果前端代码在单独的frontend目录下
+# 或者直接在项目根目录执行，如果前端文件在根目录
+```
+
+安装前端依赖：
+```bash
+npm install
+# 或 yarn install
+```
+
+运行前端服务：
+```bash
+npm run dev
+# 或 yarn dev
+```
+
+前端服务默认运行在 `http://localhost:5173`。
+
+### 项目结构
+
+```
+qa-proofreading-platform/
+├── api.js                      # 前端API调用封装
+├── api_specification.md        # 后端API接口文档
+├── App.css                     # 全局CSS样式
+├── App.jsx                     # React主应用组件
+├── CHANGELOG.md                # 变更日志
+├── components/                 # React组件目录
+├── database_design.sql         # 数据库设计SQL脚本
+├── data_flow.mmd               # 数据流图定义文件
+├── data_flow.png               # 数据流图图片
+├── docs/                       # 文档目录
+│   ├── qa-proofreading-prd.md  # 产品需求文档
+│   └── 部署测试指南.md         # 部署测试指南
+├── exports/                    # 导出文件存放目录
+├── frontend/                   # 前端项目根目录 (如果存在)
+├── hooks/                      # React Hooks
+├── image.png                   # 项目截图/示意图
+├── index.html                  # 前端HTML入口文件
+├── init_sqlite_db.py           # 数据库初始化脚本
+├── instance/                   # Flask实例配置和SQLite数据库文件
+├── lib/                        # 辅助库或工具函数
+├── logs/                       # 日志文件存放目录
+├── main.jsx                    # React应用入口
+├── node_modules/               # 前端依赖
+├── package-lock.json           # 前端依赖锁定文件
+├── package.json                # 前端项目配置
+├── pasted_content.txt          # 粘贴内容示例
+├── postcss.config.js           # PostCSS配置
+├── README.md                   # 项目说明文件 (当前文件)
+├── requirements.txt            # 后端Python依赖
+├── src/                        # 后端源代码目录
+│   ├── config.py               # 配置管理
+│   ├── main.py                 # Flask应用入口
+│   ├── models/                 # 数据库模型定义
+│   ├── routes/                 # API路由定义
+│   └── static/                 # 静态文件 (如果前端构建到此处)
+├── system_architecture.mmd     # 系统架构图定义文件
+├── system_architecture.png     # 系统架构图图片
+├── tailwind.config.js          # Tailwind CSS配置
+├── test_data.jsonl             # 测试数据
+├── test_qa_data.jsonl          # 测试QA数据
+├── uploads/                    # 上传文件存放目录
+├── useAuth.js                  # 认证相关Hook
+└── venv/                       # Python虚拟环境
+```
+
+## 📝 变更日志
+
+请参考 `CHANGELOG.md` 文件。
 
 ## 📄 许可证
 
-本项目仅供学习和研究使用。
-
-## 🤝 贡献
-
-欢迎提交Issue和Pull Request来改进项目。
-
-## 📞 技术支持
-
-如有问题，请查看：
-1. `修复优化报告.md` - 详细的修复说明
-2. `部署测试指南.md` - 完整的部署和测试指南
-3. 项目Issue页面 - 常见问题和解决方案
+[在此处填写许可证信息，例如 MIT License]
 

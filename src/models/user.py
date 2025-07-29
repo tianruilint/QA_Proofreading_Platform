@@ -37,9 +37,14 @@ class User(BaseModel):
     
     @classmethod
     def get_by_username(cls, username):
-        """根据用户名获取用户"""
+        """根据用户名获取活跃的用户"""
         return cls.query.filter_by(username=username, is_active=True).first()
     
+    @classmethod
+    def check_username_exists(cls, username):
+        """检查用户名是否存在（无论是否活跃）"""
+        return cls.query.filter_by(username=username).first() is not None
+        
     @classmethod
     def get_or_404(cls, user_id):
         """根据ID获取用户，不存在则抛出404"""
