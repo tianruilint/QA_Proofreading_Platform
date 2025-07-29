@@ -285,7 +285,7 @@ For detailed API interface specifications, please refer to the `api_specificatio
 
 **Clone Repository**
 ```bash
-git clone <repository URL>
+git clone https://github.com/tianruilint/qa-proofreading-platform.git
 cd qa-proofreading-platform
 ```
 
