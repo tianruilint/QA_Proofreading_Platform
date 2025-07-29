@@ -285,7 +285,7 @@ npm run build
 
 **克隆仓库**
 ```bash
-git clone <仓库地址>
+git clone https://github.com/tianruilint/qa-proofreading-platform.git
 cd qa-proofreading-platform
 ```
 
