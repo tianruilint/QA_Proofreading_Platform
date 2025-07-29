@@ -1,3 +1,5 @@
+![系统架构图](images/image.png)
+
 # QA Proofreading Collaboration Platform V2
 
 English | [中文](README.md)
@@ -65,6 +67,8 @@ The system adopts a front-end and back-end separation architecture, communicatin
 - **Data Layer**: PostgreSQL database (or SQLite), Redis cache, local file system for file storage
 - **External Services**: Scheduled cleanup tasks, data backup services (reserved)
 
+![System Architecture Diagram](images/system_architecture_en.png)
+
 ## 🚀 Deployment Guide
 
 ### Overview
@@ -118,7 +122,7 @@ First, you need to clone the project code from your version control system (e.g.
 
 ```bash
 # If it's a Git repository, please replace with your actual repository URL
-git clone <Your Project Git Repository URL>
+git clone https://github.com/tianruilint/qa-proofreading-platform.git
 cd qa-proofreading-platform
 ```
 

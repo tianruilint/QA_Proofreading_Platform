@@ -1,3 +1,5 @@
+![系统架构图](images/image.png)
+
 # QA对校对协作平台 V2
 
 [English](README_en.md) | 中文
@@ -65,6 +67,8 @@ QA对校对协作平台是一个用于高效管理和协作校对QA（Question-A
 - **数据层**: PostgreSQL数据库（或SQLite），Redis缓存，本地文件系统用于文件存储
 - **外部服务**: 定时清理任务、数据备份服务（预留）
 
+![系统架构图](images/system_architecture.png)
+
 ## 🚀 部署指南
 
 ### 概述
@@ -118,7 +122,7 @@ sudo npm install -g yarn # 如果选择使用yarn
 
 ```bash
 # 如果是Git仓库，请替换为您的实际仓库地址
-git clone <您的项目Git仓库地址>
+git clone https://github.com/tianruilint/qa-proofreading-platform.git
 cd qa-proofreading-platform
 ```
 
