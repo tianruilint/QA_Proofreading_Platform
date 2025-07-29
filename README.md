@@ -121,7 +121,6 @@ sudo npm install -g yarn # 如果选择使用yarn
 首先，您需要从版本控制系统（例如Git仓库）克隆项目代码到本地。如果您已经通过压缩包获取了项目，请将其解压到您希望部署的目录。
 
 ```bash
-# 如果是Git仓库，请替换为您的实际仓库地址
 git clone https://github.com/tianruilint/qa-proofreading-platform.git
 cd qa-proofreading-platform
 ```
