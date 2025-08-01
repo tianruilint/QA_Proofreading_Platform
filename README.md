@@ -42,7 +42,7 @@ QA对校对协作平台是一个用于高效管理和协作校对QA（Question-A
 
 ### 前端
 - **框架**: React.js
-- **UI组件**: Ant Design (根据 package.json 推断，实际代码中使用了 lucide-react 和 tailwind-merge，可能结合了Tailwind CSS)
+- **UI组件**: Ant Design
 - **构建工具**: Vite
 - **路由**: React Router DOM
 - **样式**: Tailwind CSS, PostCSS
