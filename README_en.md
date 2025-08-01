@@ -42,7 +42,7 @@ The QA Proofreading Collaboration Platform is a web application designed for eff
 
 ### Frontend
 - **Framework**: React.js
-- **UI Components**: Ant Design (inferred from package.json, actual code uses lucide-react and tailwind-merge, possibly combined with Tailwind CSS)
+- **UI Components**: Ant Design
 - **Build Tool**: Vite
 - **Routing**: React Router DOM
 - **Styling**: Tailwind CSS, PostCSS
@@ -195,11 +195,10 @@ The frontend service is built using React and Vite. Here are the deployment step
 
 **Navigate to Frontend Project Directory**
 
-Depending on the project structure, the frontend code might be in the project root directory or a `frontend/` subdirectory. Based on the compressed package content you provided, the frontend files are directly in the project root.
+The frontend code is in the `frontend/` subdirectory.
 
 ```bash
-# If you are not currently in the project root, please navigate back first
-# cd /path/to/qa-proofreading-platform
+# cd /path/to/qa-proofreading-platform/frontend
 ```
 
 **Install Frontend Dependencies**
