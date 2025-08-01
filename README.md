@@ -195,11 +195,10 @@ python src/main.py
 
 **进入前端项目目录**
 
-根据项目结构，前端代码可能位于项目根目录或 `frontend/` 子目录中。根据您提供的压缩包内容，前端文件直接位于项目根目录。
+前端代码位于 `frontend/` 子目录中。
 
 ```bash
-# 如果您当前不在项目根目录，请先回到根目录
-# cd /path/to/qa-proofreading-platform
+# cd /path/to/qa-proofreading-platform/frontend
 ```
 
 **安装前端依赖**
