@@ -52,7 +52,7 @@ QA对校对协作平台是一个用于高效管理和协作校对QA（Question-A
 - **数据库**: SQLAlchemy (ORM), SQLite (开发环境默认，可配置为PostgreSQL)
 - **API**: RESTful API
 - **认证**: JWT (PyJWT)
-- **缓存**: Redis (预留，根据 requirements.txt 推断)
+- **缓存**: Redis
 - **文件处理**: openpyxl (Excel)
 - **其他**: Flask-CORS, Werkzeug, python-dotenv, bcrypt
 
