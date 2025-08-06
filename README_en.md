@@ -52,7 +52,7 @@ The QA Proofreading Collaboration Platform is a web application designed for eff
 - **Database**: SQLAlchemy (ORM), SQLite (default for development, configurable to PostgreSQL)
 - **API**: RESTful API
 - **Authentication**: JWT (PyJWT)
-- **Caching**: Redis (reserved, inferred from requirements.txt)
+- **Caching**: Redis
 - **File Handling**: openpyxl (Excel)
 - **Others**: Flask-CORS, Werkzeug, python-dotenv, bcrypt
 
