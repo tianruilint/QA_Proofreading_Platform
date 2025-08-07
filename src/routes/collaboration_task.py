@@ -283,8 +283,8 @@ def get_editor_data(current_user, task_id):
             qa_pairs_data.append(qa_dict)
 
         assignment_info = assignment.to_dict()
-        if task.deadline and datetime.utcnow() > task.deadline and assignment.status != 'completed':
-            assignment_info['status'] = 'overdue'
+        # if task.deadline and datetime.utcnow() > task.deadline and assignment.status != 'completed':
+            # assignment_info['status'] = 'overdue'
 
         return jsonify(create_response(success=True, data={
             'qa_pairs': qa_pairs_data,
@@ -483,8 +483,8 @@ def export_collaboration_task(current_user, task_id):
         if not task.can_be_managed_by(current_user):
             return jsonify(create_response(False, error={'code': 'FORBIDDEN', 'message': '权限不足'})), 403
             
-        if task.status != 'completed':
-            return jsonify(create_response(False, error={'code': 'TASK_NOT_COMPLETED', 'message': '任务尚未完成，无法导出'})), 400
+        # if task.status != 'completed':
+            # return jsonify(create_response(False, error={'code': 'TASK_NOT_COMPLETED', 'message': '任务尚未完成，无法导出'})), 400
 
         export_format = request.args.get('format', 'jsonl').lower()
         # 只导出未被删除的 QA 对

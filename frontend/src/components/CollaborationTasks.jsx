@@ -77,7 +77,7 @@ function TaskCard({ task, user, onAssign, onSummary, onEdit, onDelete, onExport 
                         <>
                             {task.status === 'draft' && <Button variant="ghost" size="icon" onClick={() => onAssign(task)} title="分配任务"><UserPlus className="w-4 h-4 text-blue-600" /></Button>}
                             {(task.status === 'in_progress' || task.status === 'completed') && <Button variant="ghost" size="icon" onClick={() => onSummary(task)} title="查看汇总"><BarChart3 className="w-4 h-4 text-purple-600" /></Button>}
-                            {task.status === 'completed' && <Button variant="ghost" size="icon" onClick={() => onExport(task.id)} title="导出结果"><Download className="w-4 h-4 text-green-600" /></Button>}
+                            {(task.status === 'in_progress' || task.status === 'completed') && <Button variant="ghost" size="icon" onClick={() => onExport(task.id)} title="导出结果"><Download className="w-4 h-4 text-green-600" /></Button>}
                             <Button variant="ghost" size="icon" onClick={() => onDelete(task.id)} title="删除任务"><Trash2 className="w-4 h-4 text-red-600" /></Button>
                         </>
                     )}

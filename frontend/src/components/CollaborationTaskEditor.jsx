@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { apiClient } from '../lib/api';
 import { toast } from 'sonner';
+import { Input } from './ui/input';
 import { 
   ArrowLeft, Save, Send, FileText, Clock, CheckCircle, 
   Users, Calendar, Edit3, AlertTriangle, Undo, Trash2, ChevronLeft, ChevronRight, Check
@@ -93,6 +94,7 @@ export function CollaborationTaskEditor({ task, onBack }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [jumpToItem, setJumpToItem] = useState('');
   const [assignmentInfo, setAssignmentInfo] = useState(null);
   const [taskInfo, setTaskInfo] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -110,6 +112,38 @@ export function CollaborationTaskEditor({ task, onBack }) {
       const saved = localStorage.getItem(getLocalStorageKey());
       return saved ? JSON.parse(saved) : [];
   });
+
+  const handleJumpToItem = () => {
+    if (!assignmentInfo) {
+      toast.error("任务分配信息尚未加载，无法跳转。");
+      return;
+    }
+
+    // 用户输入的是文件中QA对的绝对序号 (1-based)
+    const itemNumber = parseInt(jumpToItem, 10);
+
+    const minIndex = assignmentInfo.start_index + 1;
+    const maxIndex = assignmentInfo.end_index + 1;
+
+    if (isNaN(itemNumber) || itemNumber < minIndex || itemNumber > maxIndex) {
+      toast.error(`请输入您负责范围内的绝对序号 (${minIndex} - ${maxIndex})。`);
+      return;
+    }
+
+    // 计算该序号在“分配给用户的列表”中的相对位置 (0-based)
+    const relativeIndex = itemNumber - minIndex;
+    
+    // 根据相对位置和每页数量，计算目标页码
+    const targetPage = Math.floor(relativeIndex / itemsPerPage) + 1;
+
+    if (targetPage !== currentPage) {
+      setCurrentPage(targetPage);
+    } else {
+      toast.info(`QA对 #${itemNumber} 已经在当前页。`);
+    }
+    setJumpToItem(''); // 跳转后清空输入框
+  };
+  
 
   const [showAll, setShowAll] = useState(false);
   const itemsPerPage = 5;
@@ -286,6 +320,17 @@ export function CollaborationTaskEditor({ task, onBack }) {
               <span className="px-3 py-1 bg-white border rounded text-sm">{currentPage} / {totalPages}</span>
               <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}>下一页<ChevronRight className="w-4 h-4" /></Button>
               <Button variant="outline" size="sm" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>末页</Button>
+            <div className="flex items-center gap-1 ml-4">
+              <Input 
+                  type="number" 
+                  placeholder="序号" 
+                  className="w-24 h-9"
+                  value={jumpToItem}
+                  onChange={(e) => setJumpToItem(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleJumpToItem(); }}
+              />
+              <Button size="sm" onClick={handleJumpToItem}>跳转</Button>
+            </div>
      	    </div>
         </div>
       )}

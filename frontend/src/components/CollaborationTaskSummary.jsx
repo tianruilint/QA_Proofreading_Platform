@@ -7,6 +7,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { Input } from './ui/input';
 import {
   ArrowLeft, Users, CheckCircle, Clock, Edit3, Save, User, Trash2, Undo, ChevronLeft, ChevronRight
 } from 'lucide-react';
@@ -88,6 +89,7 @@ export function CollaborationTaskSummary({ task, onBack }) {
   const [summaryData, setSummaryData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [jumpToIndex, setJumpToIndex] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ prompt: '', completion: '' });
   const [saving, setSaving] = useState(false);
@@ -96,7 +98,28 @@ export function CollaborationTaskSummary({ task, onBack }) {
 
   const getLocalStorageKey = useCallback(() => `collab_hidden_${user?.id}_${task?.id}`, [user, task]);
   
+  const handleJumpToIndex = () => {
+    const totalItems = summaryData?.pagination.total;
+    if (!totalItems) return;
 
+    const index = parseInt(jumpToIndex, 10);
+
+    if (isNaN(index) || index < 1 || index > totalItems) {
+      toast.error(`请输入一个在 1 到 ${totalItems} 之间的有效序号。`);
+      return;
+    }
+
+    // 计算目标页码 (QA序号是1-based)
+    const targetPage = Math.ceil(index / itemsPerPage);
+
+    if (targetPage !== currentPage) {
+      setCurrentPage(targetPage);
+    } else {
+      toast.info(`QA对 #${index} 已经在当前页。`);
+    }
+    setJumpToIndex(''); // 跳转后清空输入框
+  };
+  
   const [hiddenItems, setHiddenItems] = useState([]);
   
   useEffect(() => {
@@ -238,6 +261,17 @@ export function CollaborationTaskSummary({ task, onBack }) {
                         <span className="px-3 py-1 bg-white border rounded text-sm">{currentPage} / {summaryData.pagination.pages}</span>
                         <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === summaryData.pagination.pages}>下一页<ChevronRight className="w-4 h-4" /></Button>
                         <Button variant="outline" size="sm" onClick={() => handlePageChange(summaryData.pagination.pages)} disabled={currentPage === summaryData.pagination.pages}>末页</Button>
+                      <div className="flex items-center gap-1 ml-4">
+                    	<Input 
+                            type="number" 
+                            placeholder="序号" 
+                            className="w-20 h-9"
+                            value={jumpToIndex}
+                            onChange={(e) => setJumpToIndex(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleJumpToIndex(); }}
+                        />
+                        <Button size="sm" onClick={handleJumpToIndex}>跳转</Button>
+                      </div>
                     </div>
                 </div>
             )}
